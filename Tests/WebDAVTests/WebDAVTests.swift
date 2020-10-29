@@ -2,14 +2,39 @@ import XCTest
 @testable import WebDAV
 
 final class WebDAVTests: XCTestCase {
-    func testExample() {
-        // This is an example of a functional test case.
-        // Use XCTAssert and related functions to verify your tests produce the correct
-        // results.
-        XCTAssertEqual(WebDAV().text, "Hello, World!")
+    func testListFiles() {
+        guard let username = ProcessInfo.processInfo.environment["webdav_user"],
+              let baseURL = ProcessInfo.processInfo.environment["webdav_url"],
+              let password = ProcessInfo.processInfo.environment["webdav_password"] else {
+            return XCTFail("You need to set the webdav_user, webdav_url, and webdav_password in the environment.")
+        }
+        
+        let webDAV = WebDAV()
+        let acconut = AccountStruct(username: username, baseURL: baseURL)
+        
+        let successExpectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        webDAV.listFiles(atPath: "/", account: acconut, password: password) { success in
+            XCTAssert(success)
+            successExpectation.fulfill()
+        }
+        
+        let failureExpectation = XCTestExpectation(description: "Input incorrect password to WebDAV")
+        
+        webDAV.listFiles(atPath: "/", account: acconut, password: "") { success in
+            XCTAssertFalse(success)
+            failureExpectation.fulfill()
+        }
+        
+        wait(for: [successExpectation, failureExpectation], timeout: 10.0)
     }
 
     static var allTests = [
-        ("testExample", testExample),
+        ("testListFiles", testListFiles)
     ]
+}
+
+struct AccountStruct: Account {
+    var username: String?
+    var baseURL: String?
 }
