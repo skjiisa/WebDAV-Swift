@@ -28,37 +28,6 @@ final class WebDAVTests: XCTestCase {
         
         wait(for: [successExpectation, failureExpectation], timeout: 10.0)
     }
-    
-    func testCancel() {
-        guard let username = ProcessInfo.processInfo.environment["webdav_user"],
-              let baseURL = ProcessInfo.processInfo.environment["webdav_url"],
-              let password = ProcessInfo.processInfo.environment["webdav_password"] else {
-            return XCTFail("You need to set the webdav_user, webdav_url, and webdav_password in the environment.")
-        }
-        
-        let webDAV = WebDAV()
-        let account = AccountStruct(username: username, baseURL: baseURL)
-        
-        let singleCancelExpectation = XCTestExpectation(description: "Cancel single data task")
-        
-        guard let task = webDAV.listFiles(atPath: "/", account: account, password: password, completion: { success in
-            XCTAssertFalse(success)
-            singleCancelExpectation.fulfill()
-        }) else { return XCTFail("Could not load credentials.") }
-        
-        webDAV.cancel(task)
-        
-        let cancelAllExpectation = XCTestExpectation(description: "Cancel all data tasks")
-        
-        webDAV.listFiles(atPath: "/", account: account, password: password) { success in
-            XCTAssertFalse(success)
-            cancelAllExpectation.fulfill()
-        }
-        
-        webDAV.cancelAll()
-        
-        wait(for: [singleCancelExpectation, cancelAllExpectation], timeout: 2.0)
-    }
 
     static var allTests = [
         ("testListFiles", testListFiles)

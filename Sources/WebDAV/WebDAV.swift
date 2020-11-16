@@ -8,31 +8,7 @@
 import Foundation
 import SwiftyXMLParser
 
-public class WebDAV: NSObject, URLSessionDownloadDelegate, URLSessionDataDelegate {
-    private var tasks: [URLSessionTask: (Bool) -> Void] = [:]
-    
-    public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        tasks.removeValue(forKey: downloadTask)
-    }
-    
-    public func cancelAll() {
-        tasks.forEach { task, completion in
-            if task.state != .completed {
-                completion(false)
-            }
-            task.cancel()
-            tasks.removeValue(forKey: task)
-        }
-    }
-    
-    public func cancel(_ task: URLSessionTask) {
-        if let completion = tasks[task],
-           task.state != .completed {
-           completion(false)
-        }
-        task.cancel()
-        tasks.removeValue(forKey: task)
-    }
+public class WebDAV: NSObject, URLSessionDelegate {
     
     @discardableResult
     public func listFiles(atPath path: String, account: Account, password: String, completion: @escaping (Bool) -> Void) -> URLSessionDataTask? {
@@ -66,7 +42,6 @@ public class WebDAV: NSObject, URLSessionDownloadDelegate, URLSessionDataDelegat
             completion(false)
         }
         
-        tasks[task] = completion
         task.resume()
         return task
     }
