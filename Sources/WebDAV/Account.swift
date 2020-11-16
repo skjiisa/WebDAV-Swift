@@ -7,7 +7,7 @@
 
 import Foundation
 
-protocol Account {
+public protocol Account {
     var username: String? { get }
     var baseURL: String? { get }
 }
