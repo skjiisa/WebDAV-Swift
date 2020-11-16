@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import SwiftyXMLParser
+import SWXMLHash
 
 public class WebDAV: NSObject, URLSessionDelegate {
     
@@ -29,14 +29,11 @@ public class WebDAV: NSObject, URLSessionDelegate {
             
             if let data = data,
                let string = String(data: data, encoding: .utf8) {
-                do {
-                    let xml = try XML.parse(string)
-                    print(xml["d:multistatus"]["d:response"].map { $0["d:href"].text })
-                    return completion(true)
-                } catch {
-                    // Report the error
-                    completion(false)
-                }
+                let xml = SWXMLHash.config { config in
+                    config.shouldProcessNamespaces = true
+                }.parse(string)
+                print(xml["multistatus"]["response"].all.compactMap { $0["href"].element?.text })
+                return completion(true)
             }
             
             completion(false)

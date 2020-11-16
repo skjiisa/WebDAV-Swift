@@ -11,12 +11,12 @@ let package = Package(
             targets: ["WebDAV"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/yahoojapan/SwiftyXMLParser.git", .upToNextMajor(from: "5.2.1"))
+        .package(url: "https://github.com/drmohundro/SWXMLHash.git", .upToNextMajor(from: "5.0.0"))
     ],
     targets: [
         .target(
             name: "WebDAV",
-            dependencies: ["SwiftyXMLParser"]),
+            dependencies: ["SWXMLHash"]),
         .testTarget(
             name: "WebDAVTests",
             dependencies: ["WebDAV"]),
