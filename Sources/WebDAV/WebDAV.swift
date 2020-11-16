@@ -8,18 +8,46 @@
 import Foundation
 import SwiftyXMLParser
 
-class WebDAV {
+public class WebDAV: NSObject, URLSessionDownloadDelegate, URLSessionDataDelegate {
+    private var tasks: [URLSessionTask: (Bool) -> Void] = [:]
     
-    func listFiles(atPath path: String, account: Account, password: String, completion: @escaping (Bool) -> Void) {
+    public func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
+        tasks.removeValue(forKey: downloadTask)
+    }
+    
+    public func cancelAll() {
+        tasks.forEach { task, completion in
+            if task.state != .completed {
+                completion(false)
+            }
+            task.cancel()
+            tasks.removeValue(forKey: task)
+        }
+    }
+    
+    public func cancel(_ task: URLSessionTask) {
+        if let completion = tasks[task],
+           task.state != .completed {
+           completion(false)
+        }
+        task.cancel()
+        tasks.removeValue(forKey: task)
+    }
+    
+    @discardableResult
+    public func listFiles(atPath path: String, account: Account, password: String, completion: @escaping (Bool) -> Void) -> URLSessionDataTask? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
-              let auth = self.auth(username: unwrappedAccount.username, password: password) else { return completion(false) }
+              let auth = self.auth(username: unwrappedAccount.username, password: password) else {
+            completion(false)
+            return nil
+        }
         
         let url = unwrappedAccount.baseURL.appendingPathComponent(path)
         var request = URLRequest(url: url)
         request.httpMethod = HTTPMethod.propfind.rawValue
         request.addValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
+        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
             guard let response = response as? HTTPURLResponse,
                   200...299 ~= response.statusCode else { return completion(false) }
             
@@ -36,7 +64,11 @@ class WebDAV {
             }
             
             completion(false)
-        }.resume()
+        }
+        
+        tasks[task] = completion
+        task.resume()
+        return task
     }
     
     private func auth(username: String, password: String) -> String? {
