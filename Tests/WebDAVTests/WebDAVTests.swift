@@ -104,6 +104,7 @@ final class WebDAVTests: XCTestCase {
 
     static var allTests = [
         ("testListFiles", testListFiles),
-        ("testUploadData", testUploadData)
+        ("testUploadData", testUploadData),
+        ("testDownloadData", testDownloadData)
     ]
 }
