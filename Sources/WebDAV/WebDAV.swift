@@ -12,16 +12,10 @@ public class WebDAV: NSObject, URLSessionDelegate {
     
     @discardableResult
     public func listFiles(atPath path: String, account: Account, password: String, completion: @escaping ([WebDAVFile]?) -> Void) -> URLSessionDataTask? {
-        guard let unwrappedAccount = UnwrappedAccount(account: account),
-              let auth = self.auth(username: unwrappedAccount.username, password: password) else {
+        guard var request = authorizedRequest(path: path, account: account, password: password, method: .propfind) else {
             completion(nil)
             return nil
         }
-        
-        let url = unwrappedAccount.baseURL.appendingPathComponent(path)
-        var request = URLRequest(url: url)
-        request.httpMethod = HTTPMethod.propfind.rawValue
-        request.addValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
         
         let body =
 """
@@ -66,6 +60,18 @@ public class WebDAV: NSObject, URLSessionDelegate {
         let authString = username + ":" + password
         let authData = authString.data(using: .utf8)
         return authData?.base64EncodedString()
+    }
+    
+    private func authorizedRequest(path: String, account: Account, password: String, method: HTTPMethod) -> URLRequest? {
+        guard let unwrappedAccount = UnwrappedAccount(account: account),
+              let auth = self.auth(username: unwrappedAccount.username, password: password) else { return nil }
+        
+        let url = unwrappedAccount.baseURL.appendingPathComponent(path)
+        var request = URLRequest(url: url)
+        request.httpMethod = method.rawValue
+        request.addValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
+        
+        return request
     }
     
 }
