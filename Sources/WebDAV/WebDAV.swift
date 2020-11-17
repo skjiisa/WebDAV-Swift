@@ -11,10 +11,10 @@ import SWXMLHash
 public class WebDAV: NSObject, URLSessionDelegate {
     
     @discardableResult
-    public func listFiles(atPath path: String, account: Account, password: String, completion: @escaping (Bool) -> Void) -> URLSessionDataTask? {
+    public func listFiles(atPath path: String, account: Account, password: String, completion: @escaping ([WebDAVFile]?) -> Void) -> URLSessionDataTask? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
               let auth = self.auth(username: unwrappedAccount.username, password: password) else {
-            completion(false)
+            completion(nil)
             return nil
         }
         
@@ -23,20 +23,39 @@ public class WebDAV: NSObject, URLSessionDelegate {
         request.httpMethod = HTTPMethod.propfind.rawValue
         request.addValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
         
+        let body =
+"""
+<?xml version="1.0"?>
+<d:propfind  xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns" xmlns:nc="http://nextcloud.org/ns">
+  <d:prop>
+        <d:getlastmodified />
+        <d:getetag />
+        <d:getcontenttype />
+        <oc:fileid />
+        <oc:permissions />
+        <oc:size />
+        <nc:has-preview />
+        <oc:favorite />
+  </d:prop>
+</d:propfind>
+"""
+        request.httpBody = body.data(using: .utf8)
+        
         let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
             guard let response = response as? HTTPURLResponse,
-                  200...299 ~= response.statusCode else { return completion(false) }
+                  200...299 ~= response.statusCode else { return completion(nil) }
             
             if let data = data,
                let string = String(data: data, encoding: .utf8) {
                 let xml = SWXMLHash.config { config in
                     config.shouldProcessNamespaces = true
                 }.parse(string)
-                print(xml["multistatus"]["response"].all.compactMap { $0["href"].element?.text })
-                return completion(true)
+                let files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0) }
+                print(files)
+                return completion(files)
             }
             
-            completion(false)
+            completion(nil)
         }
         
         task.resume()

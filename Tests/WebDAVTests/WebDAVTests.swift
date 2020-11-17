@@ -14,15 +14,15 @@ final class WebDAVTests: XCTestCase {
         
         let successExpectation = XCTestExpectation(description: "List files from WebDAV")
         
-        webDAV.listFiles(atPath: "/", account: account, password: password) { success in
-            XCTAssert(success)
+        webDAV.listFiles(atPath: "/", account: account, password: password) { files in
+            XCTAssertNotNil(files)
             successExpectation.fulfill()
         }
         
         let failureExpectation = XCTestExpectation(description: "Input incorrect password to WebDAV")
         
-        webDAV.listFiles(atPath: "/", account: account, password: "") { success in
-            XCTAssertFalse(success)
+        webDAV.listFiles(atPath: "/", account: account, password: "") { files in
+            XCTAssertNil(files)
             failureExpectation.fulfill()
         }
         
