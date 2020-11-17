@@ -10,6 +10,8 @@ import SWXMLHash
 
 public class WebDAV: NSObject, URLSessionDelegate {
     
+    //MARK: WebDAV Requests
+    
     /// List the files and directories at the specified path.
     /// - Parameters:
     ///   - path: The path to list files from.
@@ -66,7 +68,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return task
     }
     
-    /// Upload a file to the specified file path.
+    /// Upload data to the specified file path.
     /// - Parameters:
     ///   - data: The data of the file to upload.
     ///   - path: The path, including file name and extension, to upload the file to.
@@ -118,6 +120,31 @@ public class WebDAV: NSObject, URLSessionDelegate {
         task.resume()
         return task
     }
+    
+    /// Download data from the specified file path.
+    /// - Parameters:
+    ///   - path: The path of the file to download.
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: Returns the data if the download was successful.
+    ///   - data: The data of the file downloaded, if successful.
+    /// - Returns: The data task for the request.
+    @discardableResult
+    public func download(fileAtPath path: String, account: DAVAccount, password: String, completion: @escaping (_ data: Data?) -> Void) -> URLSessionDataTask? {
+        guard let request = authorizedRequest(path: path, account: account, password: password, method: .get) else {
+            completion(nil)
+            return nil
+        }
+        
+        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+            completion(data)
+        }
+        
+        task.resume()
+        return task
+    }
+    
+    //MARK: Private
     
     /// Creates a basic authentication credential.
     /// - Parameters:

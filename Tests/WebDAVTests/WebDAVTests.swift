@@ -43,7 +43,7 @@ final class WebDAVTests: XCTestCase {
     func testUploadFile() throws {
         guard let (account, password) = getAccount() else { return XCTFail() }
         
-        let expectation = XCTestExpectation(description: "Upload data to WebDAV")
+        let expectation = XCTestExpectation(description: "Upload file to WebDAV")
         
         let data = UUID().uuidString.data(using: .utf8)!
         let tempFileURL = FileManager.default.temporaryDirectory.appendingPathComponent("WebDAVSwiftUploadTest.txt")
@@ -56,6 +56,39 @@ final class WebDAVTests: XCTestCase {
         }
         
         wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testDownloadData() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let path = "WebDAVSwiftUploadTest.txt"
+        
+        // Upload a file
+        
+        let uploadExpectation = XCTestExpectation(description: "Upload data to WebDAV")
+        
+        let uuid = UUID().uuidString
+        let data = uuid.data(using: .utf8)!
+        
+        webDAV.upload(data: data, toPath: path, account: account, password: password) { success in
+            XCTAssert(success)
+            uploadExpectation.fulfill()
+        }
+        
+        wait(for: [uploadExpectation], timeout: 10.0)
+        
+        //Download that file
+        
+        let downloadExpectation = XCTestExpectation(description: "Download data from WebDAV")
+        
+        webDAV.download(fileAtPath: path, account: account, password: password) { data in
+            guard let data = data else { return XCTFail("No data returned") }
+            let string = String(data: data, encoding: .utf8)
+            XCTAssertEqual(string, uuid)
+            downloadExpectation.fulfill()
+        }
+        
+        wait(for: [downloadExpectation], timeout: 10.0)
     }
     
     private func getAccount() -> (account: DAVAccount, password: String)? {
