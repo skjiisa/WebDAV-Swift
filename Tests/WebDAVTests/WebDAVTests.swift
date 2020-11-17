@@ -2,15 +2,10 @@ import XCTest
 @testable import WebDAV
 
 final class WebDAVTests: XCTestCase {
+    var webDAV = WebDAV()
+    
     func testListFiles() {
-        guard let username = ProcessInfo.processInfo.environment["webdav_user"],
-              let baseURL = ProcessInfo.processInfo.environment["webdav_url"],
-              let password = ProcessInfo.processInfo.environment["webdav_password"] else {
-            return XCTFail("You need to set the webdav_user, webdav_url, and webdav_password in the environment.")
-        }
-        
-        let webDAV = WebDAV()
-        let account = AccountStruct(username: username, baseURL: baseURL)
+        guard let (account, password) = getAccount() else { return XCTFail() }
         
         let successExpectation = XCTestExpectation(description: "List files from WebDAV")
         
@@ -30,14 +25,7 @@ final class WebDAVTests: XCTestCase {
     }
     
     func testUploadData() {
-        guard let username = ProcessInfo.processInfo.environment["webdav_user"],
-              let baseURL = ProcessInfo.processInfo.environment["webdav_url"],
-              let password = ProcessInfo.processInfo.environment["webdav_password"] else {
-            return XCTFail("You need to set the webdav_user, webdav_url, and webdav_password in the environment.")
-        }
-        
-        let webDAV = WebDAV()
-        let account = AccountStruct(username: username, baseURL: baseURL)
+        guard let (account, password) = getAccount() else { return XCTFail() }
         
         let expectation = XCTestExpectation(description: "Upload data to WebDAV")
         
@@ -50,9 +38,21 @@ final class WebDAVTests: XCTestCase {
         
         wait(for: [expectation], timeout: 10.0)
     }
+    
+    private func getAccount() -> (account: Account, password: String)? {
+        guard let username = ProcessInfo.processInfo.environment["webdav_user"],
+              let baseURL = ProcessInfo.processInfo.environment["webdav_url"],
+              let password = ProcessInfo.processInfo.environment["webdav_password"] else {
+            XCTFail("You need to set the webdav_user, webdav_url, and webdav_password in the environment.")
+            return nil
+        }
+        
+        return (AccountStruct(username: username, baseURL: baseURL), password)
+    }
 
     static var allTests = [
-        ("testListFiles", testListFiles)
+        ("testListFiles", testListFiles),
+        ("testUploadData", testUploadData)
     ]
 }
 
