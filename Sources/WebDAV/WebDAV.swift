@@ -144,6 +144,33 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return task
     }
     
+    /// Create a folder at the specified path
+    /// - Parameters:
+    ///   - path: The path to create a folder at.
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: Runs upon completion.
+    ///   - success: Whether or not the folder was successfully created.
+    /// - Returns: The data task for the request.
+    @discardableResult
+    public func createFolder(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionDataTask? {
+        guard let request = authorizedRequest(path: path, account: account, password: password, method: .mkcol) else {
+            completion(false)
+            return nil
+        }
+        
+        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+            guard let response = response as? HTTPURLResponse,
+                  200...299 ~= response.statusCode,
+                  error == nil else { return completion(false) }
+            
+            completion(true)
+        }
+        
+        task.resume()
+        return task
+    }
+    
     //MARK: Private
     
     /// Creates a basic authentication credential.
