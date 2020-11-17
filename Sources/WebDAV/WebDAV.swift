@@ -92,6 +92,32 @@ public class WebDAV: NSObject, URLSessionDelegate {
         task.resume()
         return task
     }
+    /// Upload a file to the specified file path.
+    /// - Parameters:
+    ///   - file: The path to the file to upload.
+    ///   - path: The path, including file name and extension, to upload the file to.
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: The block run upon completion.
+    ///   If account properties are invalid, this will run almost immediately after.
+    ///   Otherwise, it runs when the nextwork call finishes.
+    ///   - success: Boolean indicating whether the upload was successful or not.
+    /// - Returns: The upload task for the request.
+    @discardableResult
+    public func upload(file: URL, toPath path: String, account: DAVAccount, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionUploadTask? {
+        guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
+            completion(false)
+            return nil
+        }
+        
+        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).uploadTask(with: request, fromFile: file) { _, response, error in
+            guard error == nil else { return completion(false) }
+            completion(true)
+        }
+        
+        task.resume()
+        return task
+    }
     
     /// Creates a basic authentication credential.
     /// - Parameters:

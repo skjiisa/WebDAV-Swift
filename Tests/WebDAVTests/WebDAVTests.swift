@@ -39,6 +39,25 @@ final class WebDAVTests: XCTestCase {
         wait(for: [expectation], timeout: 10.0)
     }
     
+    @available(iOS 10.0, *)
+    func testUploadFile() throws {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "Upload data to WebDAV")
+        
+        let data = UUID().uuidString.data(using: .utf8)!
+        let tempFileURL = FileManager.default.temporaryDirectory.appendingPathComponent("WebDAVSwiftUploadTest.txt")
+        try data.write(to: tempFileURL)
+        
+        webDAV.upload(file: tempFileURL, toPath: "WebDAVSwiftUploadTest.txt", account: account, password: password) { success in
+            try? FileManager.default.removeItem(at: tempFileURL)
+            XCTAssert(success)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
     private func getAccount() -> (account: DAVAccount, password: String)? {
         guard let username = ProcessInfo.processInfo.environment["webdav_user"],
               let baseURL = ProcessInfo.processInfo.environment["webdav_url"],
