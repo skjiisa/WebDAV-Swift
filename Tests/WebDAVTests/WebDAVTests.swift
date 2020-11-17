@@ -39,7 +39,7 @@ final class WebDAVTests: XCTestCase {
         wait(for: [expectation], timeout: 10.0)
     }
     
-    private func getAccount() -> (account: Account, password: String)? {
+    private func getAccount() -> (account: DAVAccount, password: String)? {
         guard let username = ProcessInfo.processInfo.environment["webdav_user"],
               let baseURL = ProcessInfo.processInfo.environment["webdav_url"],
               let password = ProcessInfo.processInfo.environment["webdav_password"] else {
@@ -47,16 +47,11 @@ final class WebDAVTests: XCTestCase {
             return nil
         }
         
-        return (AccountStruct(username: username, baseURL: baseURL), password)
+        return (SimpleAccount(username: username, baseURL: baseURL), password)
     }
 
     static var allTests = [
         ("testListFiles", testListFiles),
         ("testUploadData", testUploadData)
     ]
-}
-
-struct AccountStruct: Account {
-    var username: String?
-    var baseURL: String?
 }

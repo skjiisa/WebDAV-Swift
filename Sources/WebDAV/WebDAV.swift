@@ -21,7 +21,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - files: The files at the directory specified. `nil` if there was an error.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func listFiles(atPath path: String, account: Account, password: String, completion: @escaping (_ files: [WebDAVFile]?) -> Void) -> URLSessionDataTask? {
+    public func listFiles(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ files: [WebDAVFile]?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: .propfind) else {
             completion(nil)
             return nil
@@ -78,7 +78,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - success: Boolean indicating whether the upload was successful or not.
     /// - Returns: The upload task for the request.
     @discardableResult
-    public func upload(data: Data, toPath path: String, account: Account, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionUploadTask? {
+    public func upload(data: Data, toPath path: String, account: DAVAccount, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionUploadTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
             completion(false)
             return nil
@@ -111,7 +111,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - password: The WebDAV password
     ///   - method: The HTTP Method for the request.
     /// - Returns: The URL request if the credentials are valid (can be encoded as UTF-8).
-    private func authorizedRequest(path: String, account: Account, password: String, method: HTTPMethod) -> URLRequest? {
+    private func authorizedRequest(path: String, account: DAVAccount, password: String, method: HTTPMethod) -> URLRequest? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
               let auth = self.auth(username: unwrappedAccount.username, password: password) else { return nil }
         
