@@ -10,8 +10,18 @@ import SWXMLHash
 
 public class WebDAV: NSObject, URLSessionDelegate {
     
+    /// List the files and directories at the specified path.
+    /// - Parameters:
+    ///   - path: The path to list files from.
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: The block run upon completion.
+    ///   If account properties are invalid, this will run almost immediately after.
+    ///   Otherwise, it runs when the nextwork call finishes.
+    ///   - files: The files at the directory specified. `nil` if there was an error.
+    /// - Returns: The data task for the request.
     @discardableResult
-    public func listFiles(atPath path: String, account: Account, password: String, completion: @escaping ([WebDAVFile]?) -> Void) -> URLSessionDataTask? {
+    public func listFiles(atPath path: String, account: Account, password: String, completion: @escaping (_ files: [WebDAVFile]?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: .propfind) else {
             completion(nil)
             return nil
@@ -56,8 +66,19 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return task
     }
     
+    /// Upload a file to the specified file path.
+    /// - Parameters:
+    ///   - data: The data of the file to upload.
+    ///   - path: The path, including file name and extension, to upload the file to.
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: The block run upon completion.
+    ///   If account properties are invalid, this will run almost immediately after.
+    ///   Otherwise, it runs when the nextwork call finishes.
+    ///   - success: Boolean indicating whether the upload was successful or not.
+    /// - Returns: The upload task for the request.
     @discardableResult
-    public func upload(data: Data, toPath path: String, account: Account, password: String, completion: @escaping (Bool) -> Void) -> URLSessionUploadTask? {
+    public func upload(data: Data, toPath path: String, account: Account, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionUploadTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
             completion(false)
             return nil
@@ -72,12 +93,24 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return task
     }
     
+    /// Creates a basic authentication credential.
+    /// - Parameters:
+    ///   - username: The username
+    ///   - password: The password
+    /// - Returns: A base-64 encoded credential if the provided credentials are valid (can be encoded as UTF-8).
     private func auth(username: String, password: String) -> String? {
         let authString = username + ":" + password
         let authData = authString.data(using: .utf8)
         return authData?.base64EncodedString()
     }
     
+    /// Creates an authorized URL request at the path and with the HTTP method specified.
+    /// - Parameters:
+    ///   - path: The path of the request
+    ///   - account: The WebDAV account
+    ///   - password: The WebDAV password
+    ///   - method: The HTTP Method for the request.
+    /// - Returns: The URL request if the credentials are valid (can be encoded as UTF-8).
     private func authorizedRequest(path: String, account: Account, password: String, method: HTTPMethod) -> URLRequest? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
               let auth = self.auth(username: unwrappedAccount.username, password: password) else { return nil }
