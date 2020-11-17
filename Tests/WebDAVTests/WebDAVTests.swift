@@ -28,6 +28,28 @@ final class WebDAVTests: XCTestCase {
         
         wait(for: [successExpectation, failureExpectation], timeout: 10.0)
     }
+    
+    func testUploadData() {
+        guard let username = ProcessInfo.processInfo.environment["webdav_user"],
+              let baseURL = ProcessInfo.processInfo.environment["webdav_url"],
+              let password = ProcessInfo.processInfo.environment["webdav_password"] else {
+            return XCTFail("You need to set the webdav_user, webdav_url, and webdav_password in the environment.")
+        }
+        
+        let webDAV = WebDAV()
+        let account = AccountStruct(username: username, baseURL: baseURL)
+        
+        let expectation = XCTestExpectation(description: "Upload data to WebDAV")
+        
+        let data = UUID().uuidString.data(using: .utf8)!
+        
+        webDAV.upload(data: data, toPath: "WebDAVSwiftUploadTest.txt", account: account, password: password) { success in
+            XCTAssert(success)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
 
     static var allTests = [
         ("testListFiles", testListFiles)

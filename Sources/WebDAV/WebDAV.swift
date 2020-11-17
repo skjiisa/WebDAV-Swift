@@ -56,6 +56,22 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return task
     }
     
+    @discardableResult
+    public func upload(data: Data, toPath path: String, account: Account, password: String, completion: @escaping (Bool) -> Void) -> URLSessionUploadTask? {
+        guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
+            completion(false)
+            return nil
+        }
+        
+        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).uploadTask(with: request, from: data) { _, response, error in
+            guard error == nil else { return completion(false) }
+            completion(true)
+        }
+        
+        task.resume()
+        return task
+    }
+    
     private func auth(username: String, password: String) -> String? {
         let authString = username + ":" + password
         let authData = authString.data(using: .utf8)
