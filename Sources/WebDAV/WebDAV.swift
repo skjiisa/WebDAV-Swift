@@ -171,6 +171,33 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return task
     }
     
+    /// Delete the file or folder at the specified path.
+    /// - Parameters:
+    ///   - path: The path of the file or folder to delete.
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: Runs upon completion.
+    ///   - success: Whether or not the item was successfully deleted.
+    /// - Returns: The data task for the request.
+    @discardableResult
+    public func deleteFile(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionDataTask? {
+        guard let request = authorizedRequest(path: path, account: account, password: password, method: .delete) else {
+            completion(false)
+            return nil
+        }
+        
+        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+            guard let response = response as? HTTPURLResponse,
+                  200...299 ~= response.statusCode,
+                  error == nil else { return completion(false) }
+            
+            completion(true)
+        }
+        
+        task.resume()
+        return task
+    }
+    
     //MARK: Private
     
     /// Creates a basic authentication credential.
