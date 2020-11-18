@@ -91,6 +91,28 @@ final class WebDAVTests: XCTestCase {
         wait(for: [downloadExpectation], timeout: 10.0)
     }
     
+    func testCreateFolder() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let createExpectation = XCTestExpectation(description: "Create folder in WebDAV")
+        let deleteExpectation = XCTestExpectation(description: "Delete folder")
+        
+        let path = UUID().uuidString
+        
+        webDAV.createFolder(atPath: path, account: account, password: password) { success in
+            XCTAssert(success)
+            createExpectation.fulfill()
+        }
+        
+        wait(for: [createExpectation], timeout: 10.0)
+        
+        webDAV.deleteFile(atPath: path, account: account, password: password) { success in
+            deleteExpectation.fulfill()
+        }
+        
+        wait(for: [deleteExpectation], timeout: 10.0)
+    }
+    
     private func getAccount() -> (account: DAVAccount, password: String)? {
         guard let username = ProcessInfo.processInfo.environment["webdav_user"],
               let baseURL = ProcessInfo.processInfo.environment["webdav_url"],
@@ -105,6 +127,7 @@ final class WebDAVTests: XCTestCase {
     static var allTests = [
         ("testListFiles", testListFiles),
         ("testUploadData", testUploadData),
-        ("testDownloadData", testDownloadData)
+        ("testDownloadData", testDownloadData),
+        ("testCreateFolder", testCreateFolder)
     ]
 }
