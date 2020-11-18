@@ -47,7 +47,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
 """
         request.httpBody = body.data(using: .utf8)
         
-        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
             guard let response = response as? HTTPURLResponse,
                   200...299 ~= response.statusCode else { return completion(nil) }
             
@@ -86,7 +86,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).uploadTask(with: request, from: data) { _, response, error in
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, from: data) { _, response, error in
             guard error == nil else { return completion(false) }
             completion(true)
         }
@@ -112,7 +112,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).uploadTask(with: request, fromFile: file) { _, response, error in
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, fromFile: file) { _, response, error in
             guard error == nil else { return completion(false) }
             completion(true)
         }
@@ -136,7 +136,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
             completion(data)
         }
         
@@ -159,7 +159,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
             guard let response = response as? HTTPURLResponse,
                   200...299 ~= response.statusCode,
                   error == nil else { return completion(false) }
@@ -186,7 +186,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .default, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
             guard let response = response as? HTTPURLResponse,
                   200...299 ~= response.statusCode,
                   error == nil else { return completion(false) }
