@@ -155,7 +155,9 @@ final class WebDAVTests: XCTestCase {
         guard let (account, password) = getAccount() else { return XCTFail() }
         
         let uploadExpectation = XCTestExpectation(description: "Upload file to WebDAV")
+        let listFilesBefore = XCTestExpectation(description: "List files before deleting")
         let deleteExpectation = XCTestExpectation(description: "Delete file")
+        let listFilesAfter = XCTestExpectation(description: "List files after deleting")
         
         let path = UUID().uuidString + ".txt"
         let data = UUID().uuidString.data(using: .utf8)!
@@ -169,6 +171,16 @@ final class WebDAVTests: XCTestCase {
         
         wait(for: [uploadExpectation], timeout: 10.0)
         
+        // List files to ensure it was created
+        
+        webDAV.listFiles(atPath: path, account: account, password: password) { files in
+            let newFile = files?.first(where: { ($0.path as NSString).lastPathComponent == path })
+            XCTAssertNotNil(newFile)
+            listFilesBefore.fulfill()
+        }
+        
+        wait(for: [listFilesBefore], timeout: 10.0)
+        
         // Delete the file
         
         webDAV.deleteFile(atPath: path, account: account, password: password) { success in
@@ -177,6 +189,16 @@ final class WebDAVTests: XCTestCase {
         }
         
         wait(for: [deleteExpectation], timeout: 10.0)
+        
+        // List files to ensure it was deleted
+        
+        webDAV.listFiles(atPath: path, account: account, password: password) { files in
+            let newFile = files?.first(where: { ($0.path as NSString).lastPathComponent == path })
+            XCTAssertNil(newFile)
+            listFilesAfter.fulfill()
+        }
+        
+        wait(for: [listFilesAfter], timeout: 10.0)
     }
     
     private func getAccount() -> (account: DAVAccount, password: String)? {
