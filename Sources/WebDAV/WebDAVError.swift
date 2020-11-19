@@ -1,6 +1,6 @@
 //
 //  WebDAVError.swift
-//  
+//  WebDAV-Swift
 //
 //  Created by Isaac Lyons on 11/19/20.
 //

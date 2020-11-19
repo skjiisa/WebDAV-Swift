@@ -23,7 +23,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func listFiles(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func listFiles(atPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: .propfind) else {
             completion(nil, .invalidCredentials)
             return nil
@@ -62,7 +62,6 @@ public class WebDAV: NSObject, URLSessionDelegate {
                 config.shouldProcessNamespaces = true
             }.parse(string)
             let files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0) }
-            print(files)
             return completion(files, nil)
         }
         
@@ -81,7 +80,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
-    public func upload(data: Data, toPath path: String, account: DAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
+    public func upload(data: Data, toPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
             completion(.invalidCredentials)
             return nil
@@ -105,7 +104,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
-    public func upload(file: URL, toPath path: String, account: DAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
+    public func upload(file: URL, toPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
             completion(.invalidCredentials)
             return nil
@@ -130,7 +129,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func download(fileAtPath path: String, account: DAVAccount, password: String, completion: @escaping (_ data: Data?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func download(fileAtPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ data: Data?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .get) else {
             completion(nil, .invalidCredentials)
             return nil
@@ -154,7 +153,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func createFolder(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func createFolder(atPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .mkcol) else {
             completion(.invalidCredentials)
             return nil
@@ -178,7 +177,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func deleteFile(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func deleteFile(atPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .delete) else {
             completion(.invalidCredentials)
             return nil
@@ -212,7 +211,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - password: The WebDAV password
     ///   - method: The HTTP Method for the request.
     /// - Returns: The URL request if the credentials are valid (can be encoded as UTF-8).
-    private func authorizedRequest(path: String, account: DAVAccount, password: String, method: HTTPMethod) -> URLRequest? {
+    private func authorizedRequest(path: String, account: WebDAVAccount, password: String, method: HTTPMethod) -> URLRequest? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
               let auth = self.auth(username: unwrappedAccount.username, password: password) else { return nil }
         

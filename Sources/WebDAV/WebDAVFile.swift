@@ -1,6 +1,6 @@
 //
 //  WebDAVFile.swift
-//  
+//  WebDAV-Swift
 //
 //  Created by Isaac Lyons on 11/16/20.
 //
