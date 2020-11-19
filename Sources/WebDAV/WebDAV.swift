@@ -124,18 +124,19 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path of the file to download.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - completion: Returns the data if the download was successful.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
     ///   - data: The data of the file downloaded, if successful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func download(fileAtPath path: String, account: DAVAccount, password: String, completion: @escaping (_ data: Data?) -> Void) -> URLSessionDataTask? {
+    public func download(fileAtPath path: String, account: DAVAccount, password: String, completion: @escaping (_ data: Data?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .get) else {
-            completion(nil)
+            completion(nil, .invalidCredentials)
             return nil
         }
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            completion(data)
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
+            completion(data, self?.getError(response: response, error: error))
         }
         
         task.resume()

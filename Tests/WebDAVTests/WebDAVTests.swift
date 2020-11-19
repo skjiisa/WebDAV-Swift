@@ -116,8 +116,9 @@ final class WebDAVTests: XCTestCase {
         
         // Download that file
         
-        webDAV.download(fileAtPath: path, account: account, password: password) { data in
+        webDAV.download(fileAtPath: path, account: account, password: password) { data, error in
             guard let data = data else { return XCTFail("No data returned") }
+            XCTAssertNil(error)
             let string = String(data: data, encoding: .utf8)
             XCTAssertEqual(string, uuid)
             downloadExpectation.fulfill()
