@@ -66,6 +66,22 @@ The functions currently available are
 
 + `listFiles`
 + `upload`
++ `download`
++ `createFolder`
++ `deleteFile`
+
+### Example
+
+```swift
+let baseURL = "https://nextcloud.example.com/remote.php/dav/files/Username/"
+let account = SimpleAccount(username: username, baseURL: baseURL)
+let path = "file.txt"
+let data = "File contents".data(using: .utf8)
+        
+webDAV.upload(data: data, toPath: path, account: account, password: password) { error in
+    // Handle the error
+}
+```
 
 ## Contribution
 
@@ -87,5 +103,4 @@ Under Arguments in Test, add the following environment variables:
 + `webdav_password`: The password for your WebDAV account
 + `webdav_url`: The URL of the WebDAV server your account is on
 
-Note that the `testUploadData` test will upload a 36-byte file named `WebDAVSwiftUploadTest.txt`
-to the root folder of your WebDAV account and will overwrite any other file with that same name.
+Note that running the tests will create files on your WebDAV server, though they should also be deleted, assuming all the tests pass.
