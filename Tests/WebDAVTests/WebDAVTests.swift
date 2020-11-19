@@ -154,7 +154,7 @@ final class WebDAVTests: XCTestCase {
         
         // Delete the folder
         
-        webDAV.deleteFile(atPath: path, account: account, password: password) { success in
+        webDAV.deleteFile(atPath: path, account: account, password: password) { _ in
             deleteExpectation.fulfill()
         }
         
@@ -193,8 +193,8 @@ final class WebDAVTests: XCTestCase {
         
         // Delete the file
         
-        webDAV.deleteFile(atPath: path, account: account, password: password) { success in
-            XCTAssert(success)
+        webDAV.deleteFile(atPath: path, account: account, password: password) { error in
+            XCTAssertNil(error)
             deleteExpectation.fulfill()
         }
         
