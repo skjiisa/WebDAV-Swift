@@ -127,6 +127,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
     ///   Otherwise, it runs when the nextwork call finishes on a background thread.
     ///   - data: The data of the file downloaded, if successful.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
     public func download(fileAtPath path: String, account: DAVAccount, password: String, completion: @escaping (_ data: Data?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
@@ -148,22 +149,19 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path to create a folder at.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - completion: Runs upon completion.
-    ///   - success: Whether or not the folder was successfully created.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func createFolder(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionDataTask? {
+    public func createFolder(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .mkcol) else {
-            completion(false)
+            completion(.invalidCredentials)
             return nil
         }
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            guard let response = response as? HTTPURLResponse,
-                  200...299 ~= response.statusCode,
-                  error == nil else { return completion(false) }
-            
-            completion(true)
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
+            completion(self?.getError(response: response, error: error))
         }
         
         task.resume()

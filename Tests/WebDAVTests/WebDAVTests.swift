@@ -145,8 +145,8 @@ final class WebDAVTests: XCTestCase {
         
         // Create folder
         
-        webDAV.createFolder(atPath: path, account: account, password: password) { success in
-            XCTAssert(success)
+        webDAV.createFolder(atPath: path, account: account, password: password) { error in
+            XCTAssertNil(error)
             createExpectation.fulfill()
         }
         
