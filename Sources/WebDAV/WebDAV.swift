@@ -17,15 +17,15 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path to list files from.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - completion: The block run upon completion.
-    ///   If account properties are invalid, this will run almost immediately after.
-    ///   Otherwise, it runs when the nextwork call finishes.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
     ///   - files: The files at the directory specified. `nil` if there was an error.
+    ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func listFiles(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ files: [WebDAVFile]?) -> Void) -> URLSessionDataTask? {
+    public func listFiles(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: .propfind) else {
-            completion(nil)
+            completion(nil, .invalidCredentials)
             return nil
         }
         
@@ -47,21 +47,23 @@ public class WebDAV: NSObject, URLSessionDelegate {
 """
         request.httpBody = body.data(using: .utf8)
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            guard let response = response as? HTTPURLResponse,
-                  200...299 ~= response.statusCode else { return completion(nil) }
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
             
-            if let data = data,
-               let string = String(data: data, encoding: .utf8) {
-                let xml = SWXMLHash.config { config in
-                    config.shouldProcessNamespaces = true
-                }.parse(string)
-                let files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0) }
-                print(files)
-                return completion(files)
+            let response = response as? HTTPURLResponse
+            
+            guard 200...299 ~= response?.statusCode ?? 0,
+                  let data = data,
+                  let string = String(data: data, encoding: .utf8) else {
+                let webDAVError = self?.getError(statusCode: response?.statusCode, error: error)
+                return completion(nil, webDAVError)
             }
             
-            completion(nil)
+            let xml = SWXMLHash.config { config in
+                config.shouldProcessNamespaces = true
+            }.parse(string)
+            let files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0) }
+            print(files)
+            return completion(files, nil)
         }
         
         task.resume()
@@ -74,9 +76,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path, including file name and extension, to upload the file to.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - completion: The block run upon completion.
-    ///   If account properties are invalid, this will run almost immediately after.
-    ///   Otherwise, it runs when the nextwork call finishes.
+    ///   - completion: If account properties are invalid, this will run immediately.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
     ///   - success: Boolean indicating whether the upload was successful or not.
     /// - Returns: The upload task for the request.
     @discardableResult
@@ -228,6 +229,26 @@ public class WebDAV: NSObject, URLSessionDelegate {
         request.addValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
         
         return request
+    }
+    
+    private func getError(statusCode: Int?, error: Error?) -> WebDAVError? {
+        if let statusCode = statusCode {
+            switch statusCode {
+            case 200...299: // Success
+                return nil
+            case 401...403:
+                return .unauthorized
+            case 507:
+                return .insufficientStorage
+            default:
+                break
+            }
+        }
+        
+        if let error = error {
+            return .nsError(error)
+        }
+        return nil
     }
     
 }

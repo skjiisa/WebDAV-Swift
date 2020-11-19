@@ -12,15 +12,24 @@ final class WebDAVTests: XCTestCase {
         
         // List files
         
-        webDAV.listFiles(atPath: "/", account: account, password: password) { files in
+        webDAV.listFiles(atPath: "/", account: account, password: password) { files, error in
             XCTAssertNotNil(files)
+            XCTAssertNil(error)
             successExpectation.fulfill()
         }
         
         // Try to files with incorrect password
         
-        webDAV.listFiles(atPath: "/", account: account, password: UUID().uuidString) { files in
+        webDAV.listFiles(atPath: "/", account: account, password: UUID().uuidString) { files, error in
             XCTAssertNil(files)
+            switch error {
+            case .unauthorized:
+                break
+            case nil:
+                XCTFail("There was no error.")
+            default:
+                XCTFail("Error was not 'unauthorized'.")
+            }
             failureExpectation.fulfill()
         }
         
@@ -173,7 +182,7 @@ final class WebDAVTests: XCTestCase {
         
         // List files to ensure it was created
         
-        webDAV.listFiles(atPath: path, account: account, password: password) { files in
+        webDAV.listFiles(atPath: path, account: account, password: password) { files, _ in
             let newFile = files?.first(where: { ($0.path as NSString).lastPathComponent == path })
             XCTAssertNotNil(newFile)
             listFilesBefore.fulfill()
@@ -192,7 +201,7 @@ final class WebDAVTests: XCTestCase {
         
         // List files to ensure it was deleted
         
-        webDAV.listFiles(atPath: path, account: account, password: password) { files in
+        webDAV.listFiles(atPath: path, account: account, password: password) { files, _ in
             let newFile = files?.first(where: { ($0.path as NSString).lastPathComponent == path })
             XCTAssertNil(newFile)
             listFilesAfter.fulfill()
