@@ -76,20 +76,19 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path, including file name and extension, to upload the file to.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - completion: If account properties are invalid, this will run immediately.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
     ///   Otherwise, it runs when the nextwork call finishes on a background thread.
-    ///   - success: Boolean indicating whether the upload was successful or not.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
-    public func upload(data: Data, toPath path: String, account: DAVAccount, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionUploadTask? {
+    public func upload(data: Data, toPath path: String, account: DAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
-            completion(false)
+            completion(.invalidCredentials)
             return nil
         }
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, from: data) { _, response, error in
-            guard error == nil else { return completion(false) }
-            completion(true)
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, from: data) { [weak self] _, response, error in
+            completion(self?.getError(statusCode: (response as? HTTPURLResponse)?.statusCode, error: error))
         }
         
         task.resume()

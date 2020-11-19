@@ -47,8 +47,8 @@ final class WebDAVTests: XCTestCase {
         
         // Upload data
         
-        webDAV.upload(data: data, toPath: path, account: account, password: password) { success in
-            XCTAssert(success)
+        webDAV.upload(data: data, toPath: path, account: account, password: password) { error in
+            XCTAssertNil(error)
             uploadExpectation.fulfill()
         }
         
@@ -77,9 +77,9 @@ final class WebDAVTests: XCTestCase {
         
         // Upload File
         
-        webDAV.upload(file: tempFileURL, toPath: path, account: account, password: password) { success in
+        webDAV.upload(file: tempFileURL, toPath: path, account: account, password: password) { error in
             try? FileManager.default.removeItem(at: tempFileURL)
-            XCTAssert(success)
+            XCTAssertNil(error)
             uploadExpectation.fulfill()
         }
         
@@ -107,8 +107,8 @@ final class WebDAVTests: XCTestCase {
         
         // Upload a file
         
-        webDAV.upload(data: data, toPath: path, account: account, password: password) { success in
-            XCTAssert(success)
+        webDAV.upload(data: data, toPath: path, account: account, password: password) { error in
+            XCTAssertNil(error)
             uploadExpectation.fulfill()
         }
         
@@ -173,8 +173,8 @@ final class WebDAVTests: XCTestCase {
         
         // Upload a file
         
-        webDAV.upload(data: data, toPath: path, account: account, password: password) { success in
-            XCTAssert(success)
+        webDAV.upload(data: data, toPath: path, account: account, password: password) { error in
+            XCTAssertNil(error)
             uploadExpectation.fulfill()
         }
         
