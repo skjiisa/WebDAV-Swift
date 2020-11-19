@@ -12,15 +12,24 @@ final class WebDAVTests: XCTestCase {
         
         // List files
         
-        webDAV.listFiles(atPath: "/", account: account, password: password) { files in
+        webDAV.listFiles(atPath: "/", account: account, password: password) { files, error in
             XCTAssertNotNil(files)
+            XCTAssertNil(error)
             successExpectation.fulfill()
         }
         
         // Try to files with incorrect password
         
-        webDAV.listFiles(atPath: "/", account: account, password: UUID().uuidString) { files in
+        webDAV.listFiles(atPath: "/", account: account, password: UUID().uuidString) { files, error in
             XCTAssertNil(files)
+            switch error {
+            case .unauthorized:
+                break
+            case nil:
+                XCTFail("There was no error.")
+            default:
+                XCTFail("Error was not 'unauthorized'.")
+            }
             failureExpectation.fulfill()
         }
         
@@ -38,8 +47,8 @@ final class WebDAVTests: XCTestCase {
         
         // Upload data
         
-        webDAV.upload(data: data, toPath: path, account: account, password: password) { success in
-            XCTAssert(success)
+        webDAV.upload(data: data, toPath: path, account: account, password: password) { error in
+            XCTAssertNil(error)
             uploadExpectation.fulfill()
         }
         
@@ -68,9 +77,9 @@ final class WebDAVTests: XCTestCase {
         
         // Upload File
         
-        webDAV.upload(file: tempFileURL, toPath: path, account: account, password: password) { success in
+        webDAV.upload(file: tempFileURL, toPath: path, account: account, password: password) { error in
             try? FileManager.default.removeItem(at: tempFileURL)
-            XCTAssert(success)
+            XCTAssertNil(error)
             uploadExpectation.fulfill()
         }
         
@@ -98,8 +107,8 @@ final class WebDAVTests: XCTestCase {
         
         // Upload a file
         
-        webDAV.upload(data: data, toPath: path, account: account, password: password) { success in
-            XCTAssert(success)
+        webDAV.upload(data: data, toPath: path, account: account, password: password) { error in
+            XCTAssertNil(error)
             uploadExpectation.fulfill()
         }
         
@@ -107,8 +116,9 @@ final class WebDAVTests: XCTestCase {
         
         // Download that file
         
-        webDAV.download(fileAtPath: path, account: account, password: password) { data in
+        webDAV.download(fileAtPath: path, account: account, password: password) { data, error in
             guard let data = data else { return XCTFail("No data returned") }
+            XCTAssertNil(error)
             let string = String(data: data, encoding: .utf8)
             XCTAssertEqual(string, uuid)
             downloadExpectation.fulfill()
@@ -135,8 +145,8 @@ final class WebDAVTests: XCTestCase {
         
         // Create folder
         
-        webDAV.createFolder(atPath: path, account: account, password: password) { success in
-            XCTAssert(success)
+        webDAV.createFolder(atPath: path, account: account, password: password) { error in
+            XCTAssertNil(error)
             createExpectation.fulfill()
         }
         
@@ -144,7 +154,7 @@ final class WebDAVTests: XCTestCase {
         
         // Delete the folder
         
-        webDAV.deleteFile(atPath: path, account: account, password: password) { success in
+        webDAV.deleteFile(atPath: path, account: account, password: password) { _ in
             deleteExpectation.fulfill()
         }
         
@@ -164,8 +174,8 @@ final class WebDAVTests: XCTestCase {
         
         // Upload a file
         
-        webDAV.upload(data: data, toPath: path, account: account, password: password) { success in
-            XCTAssert(success)
+        webDAV.upload(data: data, toPath: path, account: account, password: password) { error in
+            XCTAssertNil(error)
             uploadExpectation.fulfill()
         }
         
@@ -173,7 +183,7 @@ final class WebDAVTests: XCTestCase {
         
         // List files to ensure it was created
         
-        webDAV.listFiles(atPath: path, account: account, password: password) { files in
+        webDAV.listFiles(atPath: path, account: account, password: password) { files, _ in
             let newFile = files?.first(where: { ($0.path as NSString).lastPathComponent == path })
             XCTAssertNotNil(newFile)
             listFilesBefore.fulfill()
@@ -183,8 +193,8 @@ final class WebDAVTests: XCTestCase {
         
         // Delete the file
         
-        webDAV.deleteFile(atPath: path, account: account, password: password) { success in
-            XCTAssert(success)
+        webDAV.deleteFile(atPath: path, account: account, password: password) { error in
+            XCTAssertNil(error)
             deleteExpectation.fulfill()
         }
         
@@ -192,7 +202,7 @@ final class WebDAVTests: XCTestCase {
         
         // List files to ensure it was deleted
         
-        webDAV.listFiles(atPath: path, account: account, password: password) { files in
+        webDAV.listFiles(atPath: path, account: account, password: password) { files, _ in
             let newFile = files?.first(where: { ($0.path as NSString).lastPathComponent == path })
             XCTAssertNil(newFile)
             listFilesAfter.fulfill()

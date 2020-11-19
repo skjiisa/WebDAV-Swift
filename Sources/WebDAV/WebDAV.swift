@@ -17,15 +17,15 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path to list files from.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - completion: The block run upon completion.
-    ///   If account properties are invalid, this will run almost immediately after.
-    ///   Otherwise, it runs when the nextwork call finishes.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
     ///   - files: The files at the directory specified. `nil` if there was an error.
+    ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func listFiles(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ files: [WebDAVFile]?) -> Void) -> URLSessionDataTask? {
+    public func listFiles(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: .propfind) else {
-            completion(nil)
+            completion(nil, .invalidCredentials)
             return nil
         }
         
@@ -48,20 +48,22 @@ public class WebDAV: NSObject, URLSessionDelegate {
         request.httpBody = body.data(using: .utf8)
         
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            guard let response = response as? HTTPURLResponse,
-                  200...299 ~= response.statusCode else { return completion(nil) }
             
-            if let data = data,
-               let string = String(data: data, encoding: .utf8) {
-                let xml = SWXMLHash.config { config in
-                    config.shouldProcessNamespaces = true
-                }.parse(string)
-                let files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0) }
-                print(files)
-                return completion(files)
+            let response = response as? HTTPURLResponse
+            
+            guard 200...299 ~= response?.statusCode ?? 0,
+                  let data = data,
+                  let string = String(data: data, encoding: .utf8) else {
+                let webDAVError = WebDAVError.getError(statusCode: response?.statusCode, error: error)
+                return completion(nil, webDAVError)
             }
             
-            completion(nil)
+            let xml = SWXMLHash.config { config in
+                config.shouldProcessNamespaces = true
+            }.parse(string)
+            let files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0) }
+            print(files)
+            return completion(files, nil)
         }
         
         task.resume()
@@ -74,21 +76,19 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path, including file name and extension, to upload the file to.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - completion: The block run upon completion.
-    ///   If account properties are invalid, this will run almost immediately after.
-    ///   Otherwise, it runs when the nextwork call finishes.
-    ///   - success: Boolean indicating whether the upload was successful or not.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
-    public func upload(data: Data, toPath path: String, account: DAVAccount, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionUploadTask? {
+    public func upload(data: Data, toPath path: String, account: DAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
-            completion(false)
+            completion(.invalidCredentials)
             return nil
         }
         
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, from: data) { _, response, error in
-            guard error == nil else { return completion(false) }
-            completion(true)
+            completion(WebDAVError.getError(response: response, error: error))
         }
         
         task.resume()
@@ -100,21 +100,19 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path, including file name and extension, to upload the file to.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - completion: The block run upon completion.
-    ///   If account properties are invalid, this will run almost immediately after.
-    ///   Otherwise, it runs when the nextwork call finishes.
-    ///   - success: Boolean indicating whether the upload was successful or not.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
-    public func upload(file: URL, toPath path: String, account: DAVAccount, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionUploadTask? {
+    public func upload(file: URL, toPath path: String, account: DAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
-            completion(false)
+            completion(.invalidCredentials)
             return nil
         }
         
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, fromFile: file) { _, response, error in
-            guard error == nil else { return completion(false) }
-            completion(true)
+            completion(WebDAVError.getError(response: response, error: error))
         }
         
         task.resume()
@@ -126,18 +124,20 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path of the file to download.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - completion: Returns the data if the download was successful.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
     ///   - data: The data of the file downloaded, if successful.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func download(fileAtPath path: String, account: DAVAccount, password: String, completion: @escaping (_ data: Data?) -> Void) -> URLSessionDataTask? {
+    public func download(fileAtPath path: String, account: DAVAccount, password: String, completion: @escaping (_ data: Data?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .get) else {
-            completion(nil)
+            completion(nil, .invalidCredentials)
             return nil
         }
         
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            completion(data)
+            completion(data, WebDAVError.getError(response: response, error: error))
         }
         
         task.resume()
@@ -149,22 +149,19 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path to create a folder at.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - completion: Runs upon completion.
-    ///   - success: Whether or not the folder was successfully created.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func createFolder(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionDataTask? {
+    public func createFolder(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .mkcol) else {
-            completion(false)
+            completion(.invalidCredentials)
             return nil
         }
         
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            guard let response = response as? HTTPURLResponse,
-                  200...299 ~= response.statusCode,
-                  error == nil else { return completion(false) }
-            
-            completion(true)
+            completion(WebDAVError.getError(response: response, error: error))
         }
         
         task.resume()
@@ -176,22 +173,19 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path of the file or folder to delete.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - completion: Runs upon completion.
-    ///   - success: Whether or not the item was successfully deleted.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func deleteFile(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ success: Bool) -> Void) -> URLSessionDataTask? {
+    public func deleteFile(atPath path: String, account: DAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .delete) else {
-            completion(false)
+            completion(.invalidCredentials)
             return nil
         }
         
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            guard let response = response as? HTTPURLResponse,
-                  200...299 ~= response.statusCode,
-                  error == nil else { return completion(false) }
-            
-            completion(true)
+            completion(WebDAVError.getError(response: response, error: error))
         }
         
         task.resume()
