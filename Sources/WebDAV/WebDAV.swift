@@ -47,14 +47,14 @@ public class WebDAV: NSObject, URLSessionDelegate {
 """
         request.httpBody = body.data(using: .utf8)
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
             
             let response = response as? HTTPURLResponse
             
             guard 200...299 ~= response?.statusCode ?? 0,
                   let data = data,
                   let string = String(data: data, encoding: .utf8) else {
-                let webDAVError = self?.getError(statusCode: response?.statusCode, error: error)
+                let webDAVError = WebDAVError.getError(statusCode: response?.statusCode, error: error)
                 return completion(nil, webDAVError)
             }
             
@@ -87,8 +87,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, from: data) { [weak self] _, response, error in
-            completion(self?.getError(response: response, error: error))
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, from: data) { _, response, error in
+            completion(WebDAVError.getError(response: response, error: error))
         }
         
         task.resume()
@@ -111,8 +111,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, fromFile: file) { [weak self] _, response, error in
-            completion(self?.getError(response: response, error: error))
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, fromFile: file) { _, response, error in
+            completion(WebDAVError.getError(response: response, error: error))
         }
         
         task.resume()
@@ -136,8 +136,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
-            completion(data, self?.getError(response: response, error: error))
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+            completion(data, WebDAVError.getError(response: response, error: error))
         }
         
         task.resume()
@@ -160,8 +160,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
-            completion(self?.getError(response: response, error: error))
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+            completion(WebDAVError.getError(response: response, error: error))
         }
         
         task.resume()
@@ -225,30 +225,6 @@ public class WebDAV: NSObject, URLSessionDelegate {
         request.addValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
         
         return request
-    }
-    
-    private func getError(statusCode: Int?, error: Error?) -> WebDAVError? {
-        if let statusCode = statusCode {
-            switch statusCode {
-            case 200...299: // Success
-                return nil
-            case 401...403:
-                return .unauthorized
-            case 507:
-                return .insufficientStorage
-            default:
-                break
-            }
-        }
-        
-        if let error = error {
-            return .nsError(error)
-        }
-        return nil
-    }
-    
-    private func getError(response: URLResponse?, error: Error?) -> WebDAVError? {
-        getError(statusCode: (response as? HTTPURLResponse)?.statusCode, error: error)
     }
     
 }

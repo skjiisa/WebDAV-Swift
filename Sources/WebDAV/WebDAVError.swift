@@ -17,4 +17,28 @@ public enum WebDAVError: Error {
     case insufficientStorage
     /// Another unspecified Error occurred.
     case nsError(Error)
+    
+    static func getError(statusCode: Int?, error: Error?) -> WebDAVError? {
+        if let statusCode = statusCode {
+            switch statusCode {
+            case 200...299: // Success
+                return nil
+            case 401...403:
+                return .unauthorized
+            case 507:
+                return .insufficientStorage
+            default:
+                break
+            }
+        }
+        
+        if let error = error {
+            return .nsError(error)
+        }
+        return nil
+    }
+    
+    static func getError(response: URLResponse?, error: Error?) -> WebDAVError? {
+        getError(statusCode: (response as? HTTPURLResponse)?.statusCode, error: error)
+    }
 }
