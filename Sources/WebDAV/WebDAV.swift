@@ -88,7 +88,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
         }
         
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, from: data) { [weak self] _, response, error in
-            completion(self?.getError(statusCode: (response as? HTTPURLResponse)?.statusCode, error: error))
+            completion(self?.getError(response: response, error: error))
         }
         
         task.resume()
@@ -112,7 +112,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
         }
         
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).uploadTask(with: request, fromFile: file) { [weak self] _, response, error in
-            completion(self?.getError(statusCode: (response as? HTTPURLResponse)?.statusCode, error: error))
+            completion(self?.getError(response: response, error: error))
         }
         
         task.resume()
@@ -246,6 +246,10 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return .nsError(error)
         }
         return nil
+    }
+    
+    private func getError(response: URLResponse?, error: Error?) -> WebDAVError? {
+        getError(statusCode: (response as? HTTPURLResponse)?.statusCode, error: error)
     }
     
 }
