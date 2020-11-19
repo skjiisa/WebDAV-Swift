@@ -1,6 +1,6 @@
 //
-//  File.swift
-//  
+//  Account.swift
+//  WebDAV-Swift
 //
 //  Created by Isaac Lyons on 10/29/20.
 //
