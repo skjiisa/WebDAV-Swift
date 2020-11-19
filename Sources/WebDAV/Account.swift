@@ -7,7 +7,7 @@
 
 import Foundation
 
-public protocol DAVAccount {
+public protocol WebDAVAccount {
     var username: String? { get }
     var baseURL: String? { get }
 }
@@ -16,7 +16,7 @@ internal struct UnwrappedAccount {
     var username: String
     var baseURL: URL
     
-    init?(account: DAVAccount) {
+    init?(account: WebDAVAccount) {
         guard let username = account.username,
               let baseURLString = account.baseURL,
               let baseURL = URL(string: baseURLString) else { return nil }
@@ -25,7 +25,7 @@ internal struct UnwrappedAccount {
     }
 }
 
-public struct SimpleAccount: DAVAccount {
+public struct SimpleAccount: WebDAVAccount {
     public var username: String?
     public var baseURL: String?
 }
