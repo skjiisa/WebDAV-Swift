@@ -23,17 +23,17 @@ Create and instance of the WebDAV class.
 This currently has two functions: `listFiles` and `upload`.
 WebDAV functions require a path, account, and password.
 
-### DAV Account
+### Account
 
-`DAVAccount` is a protocol that contains a username and base URL for the WebDAV server.
+`WebDAVAccount` is a protocol that contains a username and base URL for the WebDAV server.
 These properties are optional for easier conformance,
 but they must not be optional when making a request, or the request will fail.
 
-Create a class or struct that conforms to `DAVAccount` that can be used in WebDAV calls,
+Create a class or struct that conforms to `WebDAVAccount` that can be used in WebDAV calls,
 or use the provided `SimpleAccount` struct.
 Because the properties are optional, conformance can be added to CoreData entities.
 
-When instantiating a `DAVAccount`, the `baseURL` property should be the URL to access the WebDAV server.
+When instantiating a `WebDAVAccount`, the `baseURL` property should be the URL to access the WebDAV server.
 For Nextcloud, this should include `remote.php/dav/files/[username]/`
 (can be found under Settings in the bottom-left of any Files page).
 
@@ -45,13 +45,14 @@ SimpleAccount(username: "test", baseURL: "https://nextcloud.example.com/remote.p
 
 ### Making requests
 
-Every request requires a path, `DAVAccount`, and password. There is no "logging in".
+Every request requires a path, `WebDAVAccount`, and password. There is no "logging in".
+This is so apps can easily support having multiple accounts without having to log in or out of each.
 
 #### Passwords
 
 It is highly recommended you use an app-specific password (for Nextcloud, see [Login flow v2](https://docs.nextcloud.com/server/latest/developer_manual/client_apis/LoginFlow/index.html#login-flow-v2)).
 Do not store the user's password in plain text.
-Use Apple's [Keychain](https://developer.apple.com/documentation/security/keychain_services) (or something like [KeychainSwift](https://github.com/evgenyneu/keychain-swift) for easier use).
+Use [URLCredentialStorage](https://developer.apple.com/documentation/foundation/urlcredentialstorage) or [Keychain](https://developer.apple.com/documentation/security/keychain_services) (or something like [KeychainSwift](https://github.com/evgenyneu/keychain-swift) for easier use).
 
 #### Path
 
