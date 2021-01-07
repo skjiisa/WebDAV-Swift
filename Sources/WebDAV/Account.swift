@@ -7,16 +7,16 @@
 
 import Foundation
 
-public protocol WebDAVAccount {
+public protocol WebDAVAccount: Hashable {
     var username: String? { get }
     var baseURL: String? { get }
 }
 
-internal struct UnwrappedAccount {
+internal struct UnwrappedAccount: Hashable {
     var username: String
     var baseURL: URL
     
-    init?(account: WebDAVAccount) {
+    init?<A: WebDAVAccount>(account: A) {
         guard let username = account.username,
               let baseURLString = account.baseURL,
               let baseURL = URL(string: baseURLString) else { return nil }

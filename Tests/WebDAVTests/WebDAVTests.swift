@@ -211,7 +211,7 @@ final class WebDAVTests: XCTestCase {
         wait(for: [listFilesAfter], timeout: 10.0)
     }
     
-    private func getAccount() -> (account: WebDAVAccount, password: String)? {
+    private func getAccount() -> (account: SimpleAccount, password: String)? {
         guard let username = ProcessInfo.processInfo.environment["webdav_user"],
               let baseURL = ProcessInfo.processInfo.environment["webdav_url"],
               let password = ProcessInfo.processInfo.environment["webdav_password"] else {
