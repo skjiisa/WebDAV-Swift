@@ -11,12 +11,13 @@ let package = Package(
             targets: ["WebDAV"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/drmohundro/SWXMLHash.git", .upToNextMajor(from: "5.0.0"))
+        .package(url: "https://github.com/drmohundro/SWXMLHash.git", .upToNextMajor(from: "5.0.0")),
+        .package(url: "https://github.com/3lvis/Networking.git", .upToNextMajor(from: "5.1.0"))
     ],
     targets: [
         .target(
             name: "WebDAV",
-            dependencies: ["SWXMLHash"]),
+            dependencies: ["SWXMLHash", "Networking"]),
         .testTarget(
             name: "WebDAVTests",
             dependencies: ["WebDAV"]),
