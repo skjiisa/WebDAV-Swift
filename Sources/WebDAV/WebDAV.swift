@@ -231,6 +231,11 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return id
     }
     
+    /// Deletes the cached data for a certain path.
+    /// - Parameters:
+    ///   - path: The path used to download the data.
+    ///   - account: The WebDAV account used to download the data.
+    /// - Throws: An error if the URL couldn’t be created or the file can't be deleted.
     public func deleteCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
         // It's OK to leave the password blank here, because it gets set before every call
         guard let networking = self.networking(for: account, password: "") else { return }
@@ -238,6 +243,17 @@ public class WebDAV: NSObject, URLSessionDelegate {
         if FileManager.default.fileExists(atPath: destinationURL.path) {
             try FileManager.default.removeItem(atPath: destinationURL.path)
         }
+    }
+    
+    /// Returns the URL used to store a resource for a certain path.
+    /// Useful to find where a download image is located.
+    /// - Parameters:
+    ///   - path: The path used to download the data.
+    ///   - account: The WebDAV account used to download the data.
+    /// - Throws: An error if the URL couldn’t be created.
+    /// - Returns: A URL where a resource has been stored.
+    public func getCachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> URL? {
+        try self.networking(for: account, password: "")?.destinationURL(for: path)
     }
     
     /// Cancel a request
