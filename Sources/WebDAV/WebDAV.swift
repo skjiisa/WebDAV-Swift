@@ -208,21 +208,23 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   Otherwise, it runs when the nextwork call finishes on a background thread.
     ///   - image: The image downloaded, if successful.
     ///   The cached image if it has balready been downloaded.
+    ///   - cachedImageURL: The URL of the cached image.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The request identifier.
     @discardableResult
-    public func downloadImage<A: WebDAVAccount>(path: String, account: A, password: String, completion: @escaping (_ image: UIImage?, _ error: WebDAVError?) -> Void) -> String? {
+    public func downloadImage<A: WebDAVAccount>(path: String, account: A, password: String, completion: @escaping (_ image: UIImage?, _ cachedImageURL: URL?, _ error: WebDAVError?) -> Void) -> String? {
         guard let networking = self.networking(for: account, password: password) else {
-            completion(nil, .invalidCredentials)
+            completion(nil, nil, .invalidCredentials)
             return nil
         }
         
         let id = networking.downloadImage(path) { imageResult in
             switch imageResult {
             case .success(let imageResponse):
-                completion(imageResponse.image, nil)
+                let path = try? networking.destinationURL(for: path)
+                completion(imageResponse.image, path, nil)
             case .failure(let response):
-                completion(nil, WebDAVError.getError(statusCode: response.statusCode, error: response.error))
+                completion(nil, nil, WebDAVError.getError(statusCode: response.statusCode, error: response.error))
             }
         }
         
