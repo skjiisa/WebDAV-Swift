@@ -256,6 +256,13 @@ public class WebDAV: NSObject, URLSessionDelegate {
         try self.networking(for: account, password: "")?.destinationURL(for: path)
     }
     
+    /// Deletes all downloaded data that has been cached.
+    /// - Throws: An error if the resources couldn't be deleted.
+    public func deleteAllCachedData() throws {
+        guard let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("com.3lvis.networking") else { return }
+        try FileManager.default.remove(at: caches)
+    }
+    
     /// Cancel a request
     /// - Parameters:
     ///   - id: The identifier of the request.

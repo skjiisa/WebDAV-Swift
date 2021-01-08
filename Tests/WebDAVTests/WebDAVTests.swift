@@ -4,6 +4,8 @@ import XCTest
 final class WebDAVTests: XCTestCase {
     var webDAV = WebDAV()
     
+    //MARK: WebDAV
+    
     func testListFiles() {
         guard let (account, password) = getAccount() else { return XCTFail() }
         
@@ -211,33 +213,9 @@ final class WebDAVTests: XCTestCase {
         wait(for: [listFilesAfter], timeout: 10.0)
     }
     
-    func testDownloadImage() {
-        guard let (account, password) = getAccount() else { return XCTFail() }
-        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
-            return XCTFail("You need to set the image_path in the environment.")
-        }
-        
-        let expectation = XCTestExpectation(description: "Download image from WebDAV")
-        
-        try? webDAV.deleteCachedData(forItemAtPath: imagePath, account: account)
-        
-        webDAV.downloadImage(path: imagePath, account: account, password: password) { image, _, error in
-            XCTAssertNil(error)
-            XCTAssertNotNil(image)
-            expectation.fulfill()
-        }
-        
-        wait(for: [expectation], timeout: 10.0)
-        
-        XCTAssertNoThrow(try webDAV.deleteCachedData(forItemAtPath: imagePath, account: account))
-    }
+    //MARK: Networking
     
-    func testImageCache() throws {
-        guard let (account, password) = getAccount() else { return XCTFail() }
-        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
-            return XCTFail("You need to set the image_path in the environment.")
-        }
-        
+    private func downloadImage(imagePath: String, account: SimpleAccount, password: String) {
         let expectation = XCTestExpectation(description: "Download image from WebDAV")
         
         try? webDAV.deleteCachedData(forItemAtPath: imagePath, account: account)
@@ -252,9 +230,42 @@ final class WebDAVTests: XCTestCase {
         }
         
         wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testDownloadImage() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
+            return XCTFail("You need to set the image_path in the environment.")
+        }
+        
+        downloadImage(imagePath: imagePath, account: account, password: password)
+        
+        XCTAssertNoThrow(try webDAV.deleteCachedData(forItemAtPath: imagePath, account: account))
+    }
+    
+    func testImageCache() throws {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
+            return XCTFail("You need to set the image_path in the environment.")
+        }
+        
+        downloadImage(imagePath: imagePath, account: account, password: password)
         
         let cachedImageURL = try webDAV.getCachedDataURL(forItemAtPath: imagePath, account: account)!
-        XCTAssertNoThrow(try webDAV.deleteCachedData(forItemAtPath: imagePath, account: account))
+        try webDAV.deleteCachedData(forItemAtPath: imagePath, account: account)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cachedImageURL.path))
+    }
+    
+    func testDeleteAllCachedData() throws {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
+            return XCTFail("You need to set the image_path in the environment.")
+        }
+        
+        downloadImage(imagePath: imagePath, account: account, password: password)
+        
+        let cachedImageURL = try webDAV.getCachedDataURL(forItemAtPath: imagePath, account: account)!
+        XCTAssertNoThrow(try webDAV.deleteAllCachedData())
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedImageURL.path))
     }
     
