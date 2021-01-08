@@ -5,13 +5,15 @@
 //  Created by Isaac Lyons on 10/29/20.
 //
 
-import Foundation
+import UIKit
 import SWXMLHash
 import Networking
 
 public class WebDAV: NSObject, URLSessionDelegate {
     
-    var networking: [UnwrappedAccount: Networking] = [:]
+    //MARK: Properties
+    
+    var networkings: [UnwrappedAccount: Networking] = [:]
     
     //MARK: WebDAV Requests
     
@@ -194,6 +196,48 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return task
     }
     
+    //MARK: Networking Requests
+    // Somewhat confusing header title, but this refers to requests made using the Networking library
+    
+    /// Download and cache and image from the specified file path.
+    /// - Parameters:
+    ///   - path: The path of the image to download.
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - image: The image downloaded, if successful.
+    ///   The cached image if it has balready been downloaded.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
+    /// - Returns: The request identifier.
+    @discardableResult
+    public func downloadImage<A: WebDAVAccount>(path: String, account: A, password: String, completion: @escaping (_ image: UIImage?, _ error: WebDAVError?) -> Void) -> String? {
+        guard let networking = self.networking(for: account, password: password) else {
+            completion(nil, .invalidCredentials)
+            return nil
+        }
+        
+        let id = networking.downloadImage(path) { imageResult in
+            switch imageResult {
+            case .success(let imageResponse):
+                completion(imageResponse.image, nil)
+            case .failure(let response):
+                completion(nil, WebDAVError.getError(statusCode: response.statusCode, error: response.error))
+            }
+        }
+        
+        return id
+    }
+    
+    /// Cancel a request
+    /// - Parameters:
+    ///   - id: The identifier of the request.
+    ///   - account: The WebDAV account the request was made on.
+    public func cancelRequest<A: WebDAVAccount>(id: String, account: A) {
+        guard let unwrappedAccount = UnwrappedAccount(account: account) else { return }
+        networkings[unwrappedAccount]?.cancel(id)
+    }
+    
     //MARK: Private
     
     /// Creates a basic authentication credential.
@@ -224,6 +268,13 @@ public class WebDAV: NSObject, URLSessionDelegate {
         request.addValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
         
         return request
+    }
+    
+    private func networking<A: WebDAVAccount>(for account: A, password: String) -> Networking? {
+        guard let unwrappedAccount = UnwrappedAccount(account: account) else { return nil }
+        let networking = networkings[unwrappedAccount] ?? Networking(baseURL: unwrappedAccount.baseURL.absoluteString)
+        networking.setAuthorizationHeader(username: unwrappedAccount.username, password: password)
+        return networking
     }
     
 }

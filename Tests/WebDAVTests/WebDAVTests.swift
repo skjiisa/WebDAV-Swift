@@ -211,6 +211,23 @@ final class WebDAVTests: XCTestCase {
         wait(for: [listFilesAfter], timeout: 10.0)
     }
     
+    func testDownloadImage() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
+            return XCTFail("You need to set the image_path in the environment.")
+        }
+        
+        let expectation = XCTestExpectation(description: "Download image from WebDAV")
+        
+        webDAV.downloadImage(path: imagePath, account: account, password: password) { image, error in
+            XCTAssertNil(error)
+            XCTAssertNotNil(image)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
     private func getAccount() -> (account: SimpleAccount, password: String)? {
         guard let username = ProcessInfo.processInfo.environment["webdav_user"],
               let baseURL = ProcessInfo.processInfo.environment["webdav_url"],
