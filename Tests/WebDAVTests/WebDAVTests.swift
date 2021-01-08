@@ -219,11 +219,15 @@ final class WebDAVTests: XCTestCase {
         
         let expectation = XCTestExpectation(description: "Download image from WebDAV")
         
+        try? webDAV.deleteCachedData(forItemAtPath: imagePath, account: account)
+        
         webDAV.downloadImage(path: imagePath, account: account, password: password) { image, error in
             XCTAssertNil(error)
             XCTAssertNotNil(image)
             expectation.fulfill()
         }
+        
+        XCTAssertNoThrow(try webDAV.deleteCachedData(forItemAtPath: imagePath, account: account))
         
         wait(for: [expectation], timeout: 10.0)
     }

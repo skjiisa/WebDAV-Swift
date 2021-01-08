@@ -229,6 +229,15 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return id
     }
     
+    public func deleteCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
+        // It's OK to leave the password blank here, because it gets set before every call
+        guard let networking = self.networking(for: account, password: "") else { return }
+        let destinationURL = try networking.destinationURL(for: path)
+        if FileManager.default.fileExists(atPath: destinationURL.path) {
+            try FileManager.default.removeItem(atPath: destinationURL.path)
+        }
+    }
+    
     /// Cancel a request
     /// - Parameters:
     ///   - id: The identifier of the request.
@@ -272,7 +281,11 @@ public class WebDAV: NSObject, URLSessionDelegate {
     
     private func networking<A: WebDAVAccount>(for account: A, password: String) -> Networking? {
         guard let unwrappedAccount = UnwrappedAccount(account: account) else { return nil }
-        let networking = networkings[unwrappedAccount] ?? Networking(baseURL: unwrappedAccount.baseURL.absoluteString)
+        let networking = networkings[unwrappedAccount] ?? {
+            let networking = Networking(baseURL: unwrappedAccount.baseURL.absoluteString)
+            networkings[unwrappedAccount] = networking
+            return networking
+        }()
         networking.setAuthorizationHeader(username: unwrappedAccount.username, password: password)
         return networking
     }
