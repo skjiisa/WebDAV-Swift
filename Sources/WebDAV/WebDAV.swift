@@ -5,10 +5,15 @@
 //  Created by Isaac Lyons on 10/29/20.
 //
 
-import Foundation
+import UIKit
 import SWXMLHash
+import Networking
 
 public class WebDAV: NSObject, URLSessionDelegate {
+    
+    //MARK: Properties
+    
+    var networkings: [UnwrappedAccount: Networking] = [:]
     
     //MARK: WebDAV Requests
     
@@ -23,7 +28,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func listFiles(atPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: .propfind) else {
             completion(nil, .invalidCredentials)
             return nil
@@ -80,7 +85,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
-    public func upload(data: Data, toPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
+    public func upload<A: WebDAVAccount>(data: Data, toPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
             completion(.invalidCredentials)
             return nil
@@ -104,7 +109,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
-    public func upload(file: URL, toPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
+    public func upload<A: WebDAVAccount>(file: URL, toPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
             completion(.invalidCredentials)
             return nil
@@ -129,7 +134,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func download(fileAtPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ data: Data?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func download<A: WebDAVAccount>(fileAtPath path: String, account: A, password: String, completion: @escaping (_ data: Data?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .get) else {
             completion(nil, .invalidCredentials)
             return nil
@@ -153,7 +158,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func createFolder(atPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func createFolder<A: WebDAVAccount>(atPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .mkcol) else {
             completion(.invalidCredentials)
             return nil
@@ -177,7 +182,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func deleteFile(atPath path: String, account: WebDAVAccount, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func deleteFile<A: WebDAVAccount>(atPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .delete) else {
             completion(.invalidCredentials)
             return nil
@@ -189,6 +194,82 @@ public class WebDAV: NSObject, URLSessionDelegate {
         
         task.resume()
         return task
+    }
+    
+    //MARK: Networking Requests
+    // Somewhat confusing header title, but this refers to requests made using the Networking library
+    
+    /// Download and cache and image from the specified file path.
+    /// - Parameters:
+    ///   - path: The path of the image to download.
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - image: The image downloaded, if successful.
+    ///   The cached image if it has balready been downloaded.
+    ///   - cachedImageURL: The URL of the cached image.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
+    /// - Returns: The request identifier.
+    @discardableResult
+    public func downloadImage<A: WebDAVAccount>(path: String, account: A, password: String, completion: @escaping (_ image: UIImage?, _ cachedImageURL: URL?, _ error: WebDAVError?) -> Void) -> String? {
+        guard let networking = self.networking(for: account, password: password) else {
+            completion(nil, nil, .invalidCredentials)
+            return nil
+        }
+        
+        let id = networking.downloadImage(path) { imageResult in
+            switch imageResult {
+            case .success(let imageResponse):
+                let path = try? networking.destinationURL(for: path)
+                completion(imageResponse.image, path, nil)
+            case .failure(let response):
+                completion(nil, nil, WebDAVError.getError(statusCode: response.statusCode, error: response.error))
+            }
+        }
+        
+        return id
+    }
+    
+    /// Deletes the cached data for a certain path.
+    /// - Parameters:
+    ///   - path: The path used to download the data.
+    ///   - account: The WebDAV account used to download the data.
+    /// - Throws: An error if the URL couldn’t be created or the file can't be deleted.
+    public func deleteCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
+        // It's OK to leave the password blank here, because it gets set before every call
+        guard let networking = self.networking(for: account, password: "") else { return }
+        let destinationURL = try networking.destinationURL(for: path)
+        if FileManager.default.fileExists(atPath: destinationURL.path) {
+            try FileManager.default.removeItem(atPath: destinationURL.path)
+        }
+    }
+    
+    /// Returns the URL used to store a resource for a certain path.
+    /// Useful to find where a download image is located.
+    /// - Parameters:
+    ///   - path: The path used to download the data.
+    ///   - account: The WebDAV account used to download the data.
+    /// - Throws: An error if the URL couldn’t be created.
+    /// - Returns: A URL where a resource has been stored.
+    public func getCachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> URL? {
+        try self.networking(for: account, password: "")?.destinationURL(for: path)
+    }
+    
+    /// Deletes all downloaded data that has been cached.
+    /// - Throws: An error if the resources couldn't be deleted.
+    public func deleteAllCachedData() throws {
+        guard let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("com.3lvis.networking") else { return }
+        try FileManager.default.remove(at: caches)
+    }
+    
+    /// Cancel a request
+    /// - Parameters:
+    ///   - id: The identifier of the request.
+    ///   - account: The WebDAV account the request was made on.
+    public func cancelRequest<A: WebDAVAccount>(id: String, account: A) {
+        guard let unwrappedAccount = UnwrappedAccount(account: account) else { return }
+        networkings[unwrappedAccount]?.cancel(id)
     }
     
     //MARK: Private
@@ -211,7 +292,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - password: The WebDAV password
     ///   - method: The HTTP Method for the request.
     /// - Returns: The URL request if the credentials are valid (can be encoded as UTF-8).
-    private func authorizedRequest(path: String, account: WebDAVAccount, password: String, method: HTTPMethod) -> URLRequest? {
+    private func authorizedRequest<A: WebDAVAccount>(path: String, account: A, password: String, method: HTTPMethod) -> URLRequest? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
               let auth = self.auth(username: unwrappedAccount.username, password: password) else { return nil }
         
@@ -221,6 +302,17 @@ public class WebDAV: NSObject, URLSessionDelegate {
         request.addValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
         
         return request
+    }
+    
+    private func networking<A: WebDAVAccount>(for account: A, password: String) -> Networking? {
+        guard let unwrappedAccount = UnwrappedAccount(account: account) else { return nil }
+        let networking = networkings[unwrappedAccount] ?? {
+            let networking = Networking(baseURL: unwrappedAccount.baseURL.absoluteString)
+            networkings[unwrappedAccount] = networking
+            return networking
+        }()
+        networking.setAuthorizationHeader(username: unwrappedAccount.username, password: password)
+        return networking
     }
     
 }
