@@ -19,7 +19,19 @@ internal struct UnwrappedAccount: Hashable {
     init?<A: WebDAVAccount>(account: A) {
         guard let username = account.username,
               let baseURLString = account.baseURL,
-              let baseURL = URL(string: baseURLString) else { return nil }
+              var baseURL = URL(string: baseURLString) else { return nil }
+        
+        switch baseURL.scheme {
+        case nil:
+            baseURL = URL(string: "https://" + baseURLString) ?? baseURL
+        case "https":
+            break
+        default:
+            var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: false)
+            components?.scheme = "https"
+            baseURL = components?.url ?? baseURL
+        }
+        
         self.username = username
         self.baseURL = baseURL
     }

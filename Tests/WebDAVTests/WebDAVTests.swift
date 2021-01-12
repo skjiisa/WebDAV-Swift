@@ -213,6 +213,31 @@ final class WebDAVTests: XCTestCase {
         wait(for: [listFilesAfter], timeout: 10.0)
     }
     
+    func testURLScheme() {
+        guard let (accountConstant, password) = getAccount(),
+              let baseURL = accountConstant.baseURL else { return XCTFail() }
+        
+        var account = accountConstant
+        
+        if baseURL.hasPrefix("https://") {
+            account.baseURL = String(baseURL.dropFirst(8))
+        } else {
+            account.baseURL = "https://" + baseURL
+        }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        // List files
+        
+        webDAV.listFiles(atPath: "/", account: account, password: password) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
     //MARK: Networking
     
     private func downloadImage(imagePath: String, account: SimpleAccount, password: String) {
