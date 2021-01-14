@@ -9,6 +9,7 @@ import Foundation
 import SWXMLHash
 
 public class WebDAVFile: NSObject, Identifiable {
+    
     public var path: String
     public var id: String
     public var isDirectory: Bool
@@ -53,4 +54,10 @@ public class WebDAVFile: NSObject, Identifiable {
             + "\tID: " + id
             + "\tSize: \(size)"
     }
+    
+    public var name: String {
+        let encodedName = URL(fileURLWithPath: path).lastPathComponent
+        return encodedName.removingPercentEncoding ?? encodedName
+    }
+    
 }
