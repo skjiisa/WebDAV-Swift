@@ -27,9 +27,9 @@ public class WebDAVFile: NSObject, Identifiable {
         self.etag = etag
     }
     
-    convenience init?(xml: XMLIndexer) {
+    convenience init?(xml: XMLIndexer, baseURL: String? = nil) {
         let properties = xml["propstat"][0]["prop"]
-        guard let path = xml["href"].element?.text,
+        guard var path = xml["href"].element?.text,
               let dateString = properties["getlastmodified"].element?.text,
               let date = WebDAVFile.rfc1123Formatter.date(from: dateString),
               let id = properties["fileid"].element?.text,
@@ -37,6 +37,10 @@ public class WebDAVFile: NSObject, Identifiable {
               let size = Int(sizeString),
               let etag = properties["getetag"].element?.text else { return nil }
         let isDirectory = properties["getcontenttype"].element?.text == nil
+        
+        if let baseURL = baseURL {
+            path = WebDAVFile.remove(endOf: baseURL, from: path)
+        }
         
         self.init(path: path, id: id, isDirectory: isDirectory, lastModified: date, size: size, etag: etag)
     }
@@ -58,6 +62,20 @@ public class WebDAVFile: NSObject, Identifiable {
     public var name: String {
         let encodedName = URL(fileURLWithPath: path).lastPathComponent
         return encodedName.removingPercentEncoding ?? encodedName
+    }
+    
+    private static func remove(endOf string1: String, from string2: String) -> String {
+        guard let first = string2.first else { return string2 }
+        
+        for (i, c) in string1.enumerated() {
+            guard c == first else { continue }
+            let end = string1.dropFirst(i)
+            if string2.hasPrefix(end) {
+                return String(string2.dropFirst(end.count))
+            }
+        }
+        
+        return string2
     }
     
 }

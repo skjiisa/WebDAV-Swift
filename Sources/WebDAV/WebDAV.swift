@@ -66,7 +66,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
             let xml = SWXMLHash.config { config in
                 config.shouldProcessNamespaces = true
             }.parse(string)
-            let files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0) }
+            let files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0, baseURL: account.baseURL) }
             return completion(files, nil)
         }
         
