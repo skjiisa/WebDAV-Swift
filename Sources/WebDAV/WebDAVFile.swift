@@ -12,11 +12,11 @@ public class WebDAVFile: NSObject, Identifiable {
     
     //MARK: Properties
     
-    public var path: String
-    public var id: String
-    public var isDirectory: Bool
-    public var lastModified: Date
-    public var size: Int
+    public private(set) var path: String
+    public private(set) var id: String
+    public private(set) var isDirectory: Bool
+    public private(set) var lastModified: Date
+    public private(set) var size: Int
     
     var etag: String
     
