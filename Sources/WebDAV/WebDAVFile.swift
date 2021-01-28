@@ -44,6 +44,10 @@ public class WebDAVFile: NSObject, Identifiable {
             path = WebDAVFile.removing(endOf: baseURL, from: path)
         }
         
+        if path.first == "/" {
+            path.removeFirst()
+        }
+        
         self.init(path: path, id: id, isDirectory: isDirectory, lastModified: date, size: size, etag: etag)
     }
     
@@ -79,8 +83,26 @@ public class WebDAVFile: NSObject, Identifiable {
             + "\tSize: \(size)"
     }
     
+    public var fileURL: URL {
+        URL(fileURLWithPath: path)
+    }
+    
+    public var fileName: String {
+        let encodedName = fileURL.lastPathComponent
+        return encodedName.removingPercentEncoding ?? encodedName
+    }
+    
+    public var `extension`: String {
+        fileURL.pathExtension
+    }
+    
     public var name: String {
-        let encodedName = URL(fileURLWithPath: path).lastPathComponent
+        var encodedName = URL(fileURLWithPath: path).lastPathComponent
+        let extensionLength = self.extension.count
+        if !isDirectory,
+           extensionLength > 0 {
+            encodedName.removeLast(extensionLength + 1)
+        }
         return encodedName.removingPercentEncoding ?? encodedName
     }
     
