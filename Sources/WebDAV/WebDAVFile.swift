@@ -18,8 +18,7 @@ public class WebDAVFile: NSObject, Identifiable {
     public private(set) var isDirectory: Bool
     public private(set) var lastModified: Date
     public private(set) var size: Int
-    
-    var etag: String
+    public private(set) var etag: String
     
     init(path: String, id: String, isDirectory: Bool, lastModified: Date, size: Int, etag: String) {
         self.path = path
