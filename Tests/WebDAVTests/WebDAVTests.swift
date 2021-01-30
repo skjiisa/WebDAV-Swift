@@ -1,5 +1,6 @@
 import XCTest
 @testable import WebDAV
+import Networking
 
 final class WebDAVTests: XCTestCase {
     var webDAV = WebDAV()

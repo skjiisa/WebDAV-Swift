@@ -12,7 +12,7 @@ public class WebDAVFile: NSObject, Identifiable {
     
     //MARK: Properties
     
-    /// The path of the file with percent encoding.
+    /// The path of the file.
     public private(set) var path: String
     public private(set) var id: String
     public private(set) var isDirectory: Bool
@@ -88,10 +88,9 @@ public class WebDAVFile: NSObject, Identifiable {
         URL(fileURLWithPath: path)
     }
     
-    /// The file name including extension without percent encoding.
+    /// The file name including extension.
     public var fileName: String {
-        let encodedName = fileURL.lastPathComponent
-        return encodedName.removingPercentEncoding ?? encodedName
+        return fileURL.lastPathComponent
     }
     
     /// The file extension.
@@ -99,20 +98,14 @@ public class WebDAVFile: NSObject, Identifiable {
         fileURL.pathExtension
     }
     
-    /// The name of the file without its extension and without percent encoding.
+    /// The name of the file without its extension.
     public var name: String {
-        var encodedName = URL(fileURLWithPath: path).lastPathComponent
         let extensionLength = self.extension.count
         if !isDirectory,
            extensionLength > 0 {
-            encodedName.removeLast(extensionLength + 1)
+            return String(fileName.dropLast(extensionLength + 1))
         }
-        return encodedName.removingPercentEncoding ?? encodedName
-    }
-    
-    /// The path of the file without percent encoding.
-    public var decodedPath: String {
-        path.removingPercentEncoding ?? path
+        return fileName
     }
     
 }

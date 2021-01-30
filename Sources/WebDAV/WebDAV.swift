@@ -226,11 +226,11 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// - Returns: The request identifier.
     @discardableResult
     public func downloadImage<A: WebDAVAccount>(path: String, account: A, password: String, completion: @escaping (_ image: UIImage?, _ cachedImageURL: URL?, _ error: WebDAVError?) -> Void) -> String? {
-        guard let networking = self.networking(for: account, password: password) else {
+        guard let networking = self.networking(for: account, password: password),
+              let path = networkingPath(path) else {
             completion(nil, nil, .invalidCredentials)
             return nil
         }
-        let path = prependingSlash(path)
         
         let id = networking.downloadImage(path) { imageResult in
             switch imageResult {
@@ -252,8 +252,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// - Throws: An error if the URL couldn’t be created or the file can't be deleted.
     public func deleteCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
         // It's OK to leave the password blank here, because it gets set before every call
-        guard let networking = self.networking(for: account, password: "") else { return }
-        let path = prependingSlash(path)
+        guard let networking = self.networking(for: account, password: ""),
+              let path = networkingPath(path) else { return }
         
         let destinationURL = try networking.destinationURL(for: path)
         if FileManager.default.fileExists(atPath: destinationURL.path) {
@@ -269,7 +269,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// - Throws: An error if the URL couldn’t be created.
     /// - Returns: A URL where a resource has been stored.
     public func getCachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> URL? {
-        try self.networking(for: account, password: "")?.destinationURL(for: prependingSlash(path))
+        guard let path = networkingPath(path) else { return nil }
+        return try self.networking(for: account, password: "")?.destinationURL(for: path)
     }
     
     /// Deletes all downloaded data that has been cached.
@@ -331,8 +332,9 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return networking
     }
     
-    private func prependingSlash(_ string: String) -> String {
-        string.first == "/" ? string : "/" + string
+    private func networkingPath(_ path: String) -> String? {
+        let slashPath = path.first == "/" ? path : "/" + path
+        return slashPath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
     }
     
 }
