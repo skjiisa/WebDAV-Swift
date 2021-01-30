@@ -41,6 +41,10 @@ public class WebDAVFile: NSObject, Identifiable {
               let etag = properties["getetag"].element?.text else { return nil }
         let isDirectory = properties["getcontenttype"].element?.text == nil
         
+        if let decodedPath = path.removingPercentEncoding {
+            path = decodedPath
+        }
+        
         if let baseURL = baseURL {
             path = WebDAVFile.removing(endOf: baseURL, from: path)
         }
