@@ -28,7 +28,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, foldersFirst: Bool = true, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: .propfind) else {
             completion(nil, .invalidCredentials)
             return nil
@@ -66,7 +66,12 @@ public class WebDAV: NSObject, URLSessionDelegate {
             let xml = SWXMLHash.config { config in
                 config.shouldProcessNamespaces = true
             }.parse(string)
-            let files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0, baseURL: account.baseURL) }
+            
+            var files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0, baseURL: account.baseURL) }
+            if foldersFirst {
+                files = files.filter { $0.isDirectory } + files.filter { !$0.isDirectory }
+            }
+            
             return completion(files, nil)
         }
         

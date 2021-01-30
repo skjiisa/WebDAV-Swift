@@ -14,7 +14,7 @@ final class WebDAVTests: XCTestCase {
         
         // List files
         
-        webDAV.listFiles(atPath: "/", account: account, password: password) { files, error in
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false) { files, error in
             XCTAssertNotNil(files)
             XCTAssertNil(error)
             successExpectation.fulfill()
@@ -36,6 +36,34 @@ final class WebDAVTests: XCTestCase {
         }
         
         wait(for: [successExpectation, failureExpectation], timeout: 10.0)
+    }
+    
+    func testListFilesFoldersFirst() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        // List files
+        
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: true) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            
+            var folders = true
+            for file in files ?? [] {
+                if file.isDirectory {
+                    if !folders {
+                        XCTFail("Folder found below a file.")
+                    }
+                } else {
+                    folders = false
+                }
+            }
+            
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
     }
     
     func testUploadData() {
