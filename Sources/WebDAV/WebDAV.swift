@@ -22,13 +22,18 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path to list files from.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
+    ///   - foldersFirst: Whether folders should be sorted to the top of the list.
+    ///   Defaults to `true`.
+    ///   - includeSelf: Whether or not the folder itself at the path should be included as a file in the list.
+    ///   If so, the folder's WebDAVFile will be the first in the list.
+    ///   Defaults to `false`.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
     ///   Otherwise, it runs when the nextwork call finishes on a background thread.
     ///   - files: The files at the directory specified. `nil` if there was an error.
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, foldersFirst: Bool = true, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, foldersFirst: Bool = true, includeSelf: Bool = false, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: .propfind) else {
             completion(nil, .invalidCredentials)
             return nil
@@ -68,6 +73,9 @@ public class WebDAV: NSObject, URLSessionDelegate {
             }.parse(string)
             
             var files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0, baseURL: account.baseURL) }
+            if !includeSelf, !files.isEmpty {
+                files.removeFirst()
+            }
             if foldersFirst {
                 files = files.filter { $0.isDirectory } + files.filter { !$0.isDirectory }
             }
