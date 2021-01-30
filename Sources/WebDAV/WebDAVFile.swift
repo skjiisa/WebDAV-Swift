@@ -77,11 +77,7 @@ public class WebDAVFile: NSObject, Identifiable {
     //MARK: Public
     
     public override var description: String {
-        path
-            + (isDirectory ? "\tDirecotry" : "\tFile")
-            + "\tLast modified \(WebDAVFile.rfc1123Formatter.string(from: lastModified))"
-            + "\tID: " + id
-            + "\tSize: \(size)"
+        "WebDAVFile(path: \(path), id: \(id), isDirectory: \(isDirectory), lastModified: \(WebDAVFile.rfc1123Formatter.string(from: lastModified)), size: \(size), etag: \(etag))"
     }
     
     public var fileURL: URL {
