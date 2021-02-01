@@ -13,6 +13,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
     
     //MARK: Properties
     
+    public var byteCountFormatter = ByteCountFormatter()
+    
     var networkings: [UnwrappedAccount: Networking] = [:]
     
     //MARK: WebDAV Requests
@@ -289,13 +291,17 @@ public class WebDAV: NSObject, URLSessionDelegate {
         networkings[unwrappedAccount]?.cancel(id)
     }
     
-    public func getCacheSize() -> Int {
+    public func getCacheByteCount() -> Int {
         guard let caches = networkingCacheURL,
               let urls = FileManager.default.enumerator(at: caches, includingPropertiesForKeys: nil)?.allObjects as? [URL] else { return 0 }
         
         return urls.lazy.reduce(0) { total, url -> Int in
             ((try? url.resourceValues(forKeys: [.totalFileAllocatedSizeKey]).totalFileAllocatedSize) ?? 0) + total
         }
+    }
+    
+    public func getCacheSize() -> String {
+        byteCountFormatter.string(fromByteCount: Int64(getCacheByteCount()))
     }
     
     public var networkingCacheURL: URL? {
