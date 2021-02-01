@@ -62,7 +62,7 @@ For fuctions that read from or write to a file, this path should include the fil
 
 #### Functions
 
-The functions currently available are
+The functions currently available include
 
 + `listFiles`
 + `upload`
@@ -70,7 +70,9 @@ The functions currently available are
 + `createFolder`
 + `deleteFile`
 
-### Example
+These functions will each return a [URLSessionTask](https://developer.apple.com/documentation/foundation/urlsessiontask) which can be cancelled later.
+
+#### Example
 
 ```swift
 let baseURL = "https://nextcloud.example.com/remote.php/dav/files/Username/"
@@ -83,10 +85,35 @@ webDAV.upload(data: data, toPath: path, account: account, password: password) { 
 }
 ```
 
+### Image cache
+
+Included is functionality for downloading and caching images.
+This is based on [3lvis/Networking](https://github.com/3lvis/Networking).
+
+You can download an image like you would any other file using `downloadImage`.
+This will download the image and save it to both an memory and disk cache.
+
+#### Functions
+
+Image cache functions include
+
++ `downloadImage`
++ `deleteCachedData`
++ `getCachedDataURL`
++ `deleteAllCachedData`
++ `cancelRequest`
++ `getCacheByteCount`
++ `getCacheSize`
+
+Unlike the other request functions, `downloadImage` does not return a URLSessionTask.
+This is because it's based on 3lvis/Networking.
+Instead it returns a request identifier that can be used to cancel the request using the `cancelRequest` function.
+
 ## Contribution
 
-This package depends on [SWXMLHash](https://github.com/drmohundro/SWXMLHash).
-This should automatically be fetched by Swift Package Manager in Xcode.
+This package depends on [drmohundro/SWXMLHash](https://github.com/drmohundro/SWXMLHash)
+and [3lvis/Networking](https://github.com/3lvis/Networking).
+which should automatically be fetched by Swift Package Manager in Xcode.
 
 To test any contributions you make, make test functions in `WebDAVTests`.
 In order to run tests, you need to pass account information in as environment variables.
@@ -102,5 +129,6 @@ Under Arguments in Test, add the following environment variables:
 + `webdav_user`: The username for your WebDAV account to test with
 + `webdav_password`: The password for your WebDAV account
 + `webdav_url`: The URL of the WebDAV server your account is on
++ `image_path`: The path to an image file in the WebDAV storage
 
 Note that running the tests will create files on your WebDAV server, though they should also be deleted, assuming all the tests pass.
