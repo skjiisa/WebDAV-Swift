@@ -13,6 +13,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     
     //MARK: Properties
     
+    /// The formatter used when rendering cache size in `getCacheSize`.
     public var byteCountFormatter = ByteCountFormatter()
     
     var networkings: [UnwrappedAccount: Networking] = [:]
@@ -291,6 +292,9 @@ public class WebDAV: NSObject, URLSessionDelegate {
         networkings[unwrappedAccount]?.cancel(id)
     }
     
+    /// Get the total disk space for the contents of the image cache.
+    /// For a formatted string of the size, see `getCacheSize`.
+    /// - Returns: The total allocated space of the cache in bytes.
     public func getCacheByteCount() -> Int {
         guard let caches = networkingCacheURL,
               let urls = FileManager.default.enumerator(at: caches, includingPropertiesForKeys: nil)?.allObjects as? [URL] else { return 0 }
@@ -300,10 +304,16 @@ public class WebDAV: NSObject, URLSessionDelegate {
         }
     }
     
+    /// Get the total disk space for the contents of the image cache and display it as a localized
+    /// description that is formatted with the appropriate byte modifier (KB, MB, GB and so on).
+    ///
+    /// This formats the size using this object's `byteCountFormatter` which can be modified.
+    /// - Returns: A localized string of the total allocated space of the cache.
     public func getCacheSize() -> String {
         byteCountFormatter.string(fromByteCount: Int64(getCacheByteCount()))
     }
     
+    /// The URL to the directory that contains the cached image data.
     public var networkingCacheURL: URL? {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("com.3lvis.networking")
     }
