@@ -10,13 +10,15 @@ import SWXMLHash
 
 public class WebDAVFile: NSObject, Identifiable {
     
-    public var path: String
-    public var id: String
-    public var isDirectory: Bool
-    public var lastModified: Date
-    public var size: Int
+    //MARK: Properties
     
-    var etag: String
+    /// The path of the file.
+    public private(set) var path: String
+    public private(set) var id: String
+    public private(set) var isDirectory: Bool
+    public private(set) var lastModified: Date
+    public private(set) var size: Int
+    public private(set) var etag: String
     
     init(path: String, id: String, isDirectory: Bool, lastModified: Date, size: Int, etag: String) {
         self.path = path
@@ -27,9 +29,9 @@ public class WebDAVFile: NSObject, Identifiable {
         self.etag = etag
     }
     
-    convenience init?(xml: XMLIndexer) {
+    convenience init?(xml: XMLIndexer, baseURL: String?) {
         let properties = xml["propstat"][0]["prop"]
-        guard let path = xml["href"].element?.text,
+        guard var path = xml["href"].element?.text,
               let dateString = properties["getlastmodified"].element?.text,
               let date = WebDAVFile.rfc1123Formatter.date(from: dateString),
               let id = properties["fileid"].element?.text,
@@ -38,8 +40,22 @@ public class WebDAVFile: NSObject, Identifiable {
               let etag = properties["getetag"].element?.text else { return nil }
         let isDirectory = properties["getcontenttype"].element?.text == nil
         
+        if let decodedPath = path.removingPercentEncoding {
+            path = decodedPath
+        }
+        
+        if let baseURL = baseURL {
+            path = WebDAVFile.removing(endOf: baseURL, from: path)
+        }
+        
+        if path.first == "/" {
+            path.removeFirst()
+        }
+        
         self.init(path: path, id: id, isDirectory: isDirectory, lastModified: date, size: size, etag: etag)
     }
+    
+    //MARK: Static
     
     static let rfc1123Formatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -47,17 +63,48 @@ public class WebDAVFile: NSObject, Identifiable {
         return formatter
     }()
     
-    public override var description: String {
-        path
-            + (isDirectory ? "\tDirecotry" : "\tFile")
-            + "\tLast modified \(WebDAVFile.rfc1123Formatter.string(from: lastModified))"
-            + "\tID: " + id
-            + "\tSize: \(size)"
+    private static func removing(endOf string1: String, from string2: String) -> String {
+        guard let first = string2.first else { return string2 }
+        
+        for (i, c) in string1.enumerated() {
+            guard c == first else { continue }
+            let end = string1.dropFirst(i)
+            if string2.hasPrefix(end) {
+                return String(string2.dropFirst(end.count))
+            }
+        }
+        
+        return string2
     }
     
+    //MARK: Public
+    
+    public override var description: String {
+        "WebDAVFile(path: \(path), id: \(id), isDirectory: \(isDirectory), lastModified: \(WebDAVFile.rfc1123Formatter.string(from: lastModified)), size: \(size), etag: \(etag))"
+    }
+    
+    public var fileURL: URL {
+        URL(fileURLWithPath: path)
+    }
+    
+    /// The file name including extension.
+    public var fileName: String {
+        return fileURL.lastPathComponent
+    }
+    
+    /// The file extension.
+    public var `extension`: String {
+        fileURL.pathExtension
+    }
+    
+    /// The name of the file without its extension.
     public var name: String {
-        let encodedName = URL(fileURLWithPath: path).lastPathComponent
-        return encodedName.removingPercentEncoding ?? encodedName
+        let extensionLength = self.extension.count
+        if !isDirectory,
+           extensionLength > 0 {
+            return String(fileName.dropLast(extensionLength + 1))
+        }
+        return fileName
     }
     
 }

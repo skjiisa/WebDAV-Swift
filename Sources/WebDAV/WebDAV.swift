@@ -22,13 +22,18 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path to list files from.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
+    ///   - foldersFirst: Whether folders should be sorted to the top of the list.
+    ///   Defaults to `true`.
+    ///   - includeSelf: Whether or not the folder itself at the path should be included as a file in the list.
+    ///   If so, the folder's WebDAVFile will be the first in the list.
+    ///   Defaults to `false`.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
     ///   Otherwise, it runs when the nextwork call finishes on a background thread.
     ///   - files: The files at the directory specified. `nil` if there was an error.
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, foldersFirst: Bool = true, includeSelf: Bool = false, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: .propfind) else {
             completion(nil, .invalidCredentials)
             return nil
@@ -66,7 +71,15 @@ public class WebDAV: NSObject, URLSessionDelegate {
             let xml = SWXMLHash.config { config in
                 config.shouldProcessNamespaces = true
             }.parse(string)
-            let files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0) }
+            
+            var files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0, baseURL: account.baseURL) }
+            if !includeSelf, !files.isEmpty {
+                files.removeFirst()
+            }
+            if foldersFirst {
+                files = files.filter { $0.isDirectory } + files.filter { !$0.isDirectory }
+            }
+            
             return completion(files, nil)
         }
         
@@ -213,7 +226,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// - Returns: The request identifier.
     @discardableResult
     public func downloadImage<A: WebDAVAccount>(path: String, account: A, password: String, completion: @escaping (_ image: UIImage?, _ cachedImageURL: URL?, _ error: WebDAVError?) -> Void) -> String? {
-        guard let networking = self.networking(for: account, password: password) else {
+        guard let networking = self.networking(for: account, password: password),
+              let path = networkingPath(path) else {
             completion(nil, nil, .invalidCredentials)
             return nil
         }
@@ -238,7 +252,9 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// - Throws: An error if the URL couldn’t be created or the file can't be deleted.
     public func deleteCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
         // It's OK to leave the password blank here, because it gets set before every call
-        guard let networking = self.networking(for: account, password: "") else { return }
+        guard let networking = self.networking(for: account, password: ""),
+              let path = networkingPath(path) else { return }
+        
         let destinationURL = try networking.destinationURL(for: path)
         if FileManager.default.fileExists(atPath: destinationURL.path) {
             try FileManager.default.removeItem(atPath: destinationURL.path)
@@ -253,7 +269,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// - Throws: An error if the URL couldn’t be created.
     /// - Returns: A URL where a resource has been stored.
     public func getCachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> URL? {
-        try self.networking(for: account, password: "")?.destinationURL(for: path)
+        guard let path = networkingPath(path) else { return nil }
+        return try self.networking(for: account, password: "")?.destinationURL(for: path)
     }
     
     /// Deletes all downloaded data that has been cached.
@@ -313,6 +330,11 @@ public class WebDAV: NSObject, URLSessionDelegate {
         }()
         networking.setAuthorizationHeader(username: unwrappedAccount.username, password: password)
         return networking
+    }
+    
+    private func networkingPath(_ path: String) -> String? {
+        let slashPath = path.first == "/" ? path : "/" + path
+        return slashPath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
     }
     
 }
