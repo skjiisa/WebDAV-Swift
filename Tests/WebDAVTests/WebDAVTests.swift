@@ -339,6 +339,38 @@ final class WebDAVTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedImageURL.path))
     }
     
+    //MARK: Thumbnails
+    
+    private func downloadThumbnail(imagePath: String, account: SimpleAccount, password: String) {
+        let expectation = XCTestExpectation(description: "Download thumbnail from WebDAV")
+        
+//        try? webDAV.deleteCachedData(forItemAtPath: imagePath, account: account)
+        
+        webDAV.downloadThumbnail(path: imagePath, account: account, password: password, with: nil) { image, cachedImageURL, error in
+            XCTAssertNil(error)
+            XCTAssertNotNil(image)
+            
+            XCTAssert(FileManager.default.fileExists(atPath: cachedImageURL!.path))
+            
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testDownloadThumbnail() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
+            return XCTFail("You need to set the image_path in the environment.")
+        }
+        
+        downloadThumbnail(imagePath: imagePath, account: account, password: password)
+        
+//        XCTAssertNoThrow(try webDAV.deleteCachedData(forItemAtPath: imagePath, account: account))
+    }
+    
+    //MARK: Private
+    
     private func getAccount() -> (account: SimpleAccount, password: String)? {
         guard let username = ProcessInfo.processInfo.environment["webdav_user"],
               let baseURL = ProcessInfo.processInfo.environment["webdav_url"],

@@ -17,6 +17,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     public var byteCountFormatter = ByteCountFormatter()
     
     var networkings: [UnwrappedAccount: Networking] = [:]
+    var thumbnailNetworkings: [UnwrappedAccount: Networking] = [:]
     
     //MARK: WebDAV Requests
     
@@ -215,7 +216,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     //MARK: Networking Requests
     // Somewhat confusing header title, but this refers to requests made using the Networking library
     
-    /// Download and cache and image from the specified file path.
+    /// Download and cache an image from the specified file path.
     /// - Parameters:
     ///   - path: The path of the image to download.
     ///   - account: The WebDAV account.
@@ -231,6 +232,46 @@ public class WebDAV: NSObject, URLSessionDelegate {
     public func downloadImage<A: WebDAVAccount>(path: String, account: A, password: String, completion: @escaping (_ image: UIImage?, _ cachedImageURL: URL?, _ error: WebDAVError?) -> Void) -> String? {
         guard let networking = self.networking(for: account, password: password),
               let path = networkingPath(path) else {
+            completion(nil, nil, .invalidCredentials)
+            return nil
+        }
+        
+        let id = networking.downloadImage(path) { imageResult in
+            switch imageResult {
+            case .success(let imageResponse):
+                let path = try? networking.destinationURL(for: path)
+                completion(imageResponse.image, path, nil)
+            case .failure(let response):
+                completion(nil, nil, WebDAVError.getError(statusCode: response.statusCode, error: response.error))
+            }
+        }
+        
+        return id
+    }
+    
+    /// Download and cache an image's thumbnail from the specified file path.
+    ///
+    /// Only works with Nextcould or other instances that use Nextcloud's same thumbnail URL structure.
+    /// - Parameters:
+    ///   - path: The path of the image to download the thumbnail of.
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - dimensions: The dimensions of the thumbnail. A value of `nil` will use the server's default.
+    ///   - aspectFill: Whether the thumbnail should fill the dimensions or fit within it.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - image: The thumbnail downloaded, if successful.
+    ///   The cached thumbnail if it has balready been downloaded.
+    ///   - cachedImageURL: The URL of the cached thumbnail.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
+    /// - Returns: The request identifier.
+    @discardableResult
+    public func downloadThumbnail<A: WebDAVAccount>(
+        path: String, account: A, password: String, with dimensions: CGSize?, aspectFill: Bool = true,
+        completion: @escaping (_ image: UIImage?, _ cachedImageURL: URL?, _ error: WebDAVError?) -> Void
+    ) -> String? {
+        guard let networking = thumbnailNetworking(for: account, password: password),
+              let path = nextcloudPreviewPath(at: path, with: dimensions, aspectFill: aspectFill) else {
             completion(nil, nil, .invalidCredentials)
             return nil
         }
@@ -276,6 +317,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return try self.networking(for: account, password: "")?.destinationURL(for: path)
     }
     
+    //TODO: Get and delete cached data for thumbnails
+    
     /// Deletes all downloaded data that has been cached.
     /// - Throws: An error if the resources couldn't be deleted.
     public func deleteAllCachedData() throws {
@@ -283,13 +326,14 @@ public class WebDAV: NSObject, URLSessionDelegate {
         try FileManager.default.remove(at: caches)
     }
     
-    /// Cancel a request
+    /// Cancel a request.
     /// - Parameters:
     ///   - id: The identifier of the request.
     ///   - account: The WebDAV account the request was made on.
     public func cancelRequest<A: WebDAVAccount>(id: String, account: A) {
         guard let unwrappedAccount = UnwrappedAccount(account: account) else { return }
         networkings[unwrappedAccount]?.cancel(id)
+        thumbnailNetworkings[unwrappedAccount]?.cancel(id)
     }
     
     /// Get the total disk space for the contents of the image cache.
@@ -361,9 +405,60 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return networking
     }
     
+    private func nextcloudPreviewBaseURL(for baseURL: URL) -> URL? {
+        guard baseURL.absoluteString.lowercased().contains("remote.php/dav/files/"),
+              let index = baseURL.pathComponents.map({ $0.lowercased() }).firstIndex(of: "remote.php") else { return nil }
+        
+        // Remove Nextcloud files path components
+        var previewURL = baseURL
+        for _ in 0 ..< baseURL.pathComponents.count - index {
+            previewURL.deleteLastPathComponent()
+        }
+        
+        // Add Nextcloud thumbnail components
+        return previewURL
+            .appendingPathComponent("index.php")
+            .appendingPathComponent("core")
+            .appendingPathComponent("preview.png")
+    }
+    
+    private func thumbnailNetworking<A: WebDAVAccount>(for account: A, password: String) -> Networking? {
+        guard let unwrappedAccount = UnwrappedAccount(account: account),
+              let previewURL = nextcloudPreviewBaseURL(for: unwrappedAccount.baseURL) else { return nil }
+        
+        let networking = thumbnailNetworkings[unwrappedAccount] ?? {
+            let networking = Networking(baseURL: previewURL.absoluteString)
+            thumbnailNetworkings[unwrappedAccount] = networking
+            return networking
+        }()
+        
+        networking.setAuthorizationHeader(username: unwrappedAccount.username, password: password)
+        return networking
+    }
+    
     private func networkingPath(_ path: String) -> String? {
         let slashPath = path.first == "/" ? path : "/" + path
         return slashPath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
+    }
+    
+    private func nextcloudPreviewPath(at path: String, with dimensions: CGSize?, aspectFill: Bool = true) -> String? {
+        guard var encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else { return nil }
+        
+        if encodedPath.hasPrefix("/") {
+            encodedPath.removeFirst()
+        }
+        
+        var thumbnailPath = "?file=\(encodedPath)&mode=cover"
+        
+        if let dimensions = dimensions {
+            thumbnailPath += "&x=\(dimensions.width)&y=\(dimensions.height)"
+        }
+        
+        if aspectFill {
+            thumbnailPath += "&a=1"
+        }
+        
+        return thumbnailPath
     }
     
 }
