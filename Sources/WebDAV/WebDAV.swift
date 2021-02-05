@@ -293,7 +293,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// - Parameters:
     ///   - path: The path used to download the data.
     ///   - account: The WebDAV account used to download the data.
-    /// - Throws: An error if the URL couldn’t be created or the file can't be deleted.
+    /// - Throws: An error if the cached object URL couldn’t be created or the file can't be deleted.
     public func deleteCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
         // It's OK to leave the password blank here, because it gets set before every call
         guard let networking = self.networking(for: account, password: ""),
@@ -311,13 +311,57 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - path: The path used to download the data.
     ///   - account: The WebDAV account used to download the data.
     /// - Throws: An error if the URL couldn’t be created.
-    /// - Returns: A URL where a resource has been stored.
+    /// - Returns: The URL where the resource is stored.
     public func getCachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> URL? {
         guard let path = networkingPath(path) else { return nil }
         return try self.networking(for: account, password: "")?.destinationURL(for: path)
     }
     
-    //TODO: Get and delete cached data for thumbnails
+    /// Delete a specific thumbnail for a certain path and properties.
+    /// - Parameters:
+    ///   - path: The path of the image to delete the thumbnail of.
+    ///   - account: The WebDAV account used to download the data.
+    ///   - dimensions: The dimensions of the thumbnail to delete.
+    ///   - aspectFill: Whether the thumbnail was fetched with aspectFill.
+    /// - Throws: An error if the cached data URL couldn’t be created or the file can't be deleted.
+    public func deleteCachedThumbnail(forItemAtPath path: String, with dimensions: CGSize?, aspectFill: Bool) throws {
+        guard let path = nextcloudPreviewPath(at: path, with: dimensions, aspectFill: aspectFill) else { return }
+        
+        let destinationURL = try Networking().destinationURL(for: path)
+        if FileManager.default.fileExists(atPath: destinationURL.path) {
+            try FileManager.default.removeItem(atPath: destinationURL.path)
+        }
+    }
+    
+    public func deleteAllCachedThumbnails(forItemAtPath path: String) throws {
+        // Getting the path with no dimensions and aspect fit will give the shortest form of the path with no extras added.
+        guard let path = nextcloudPreviewPath(at: path, with: nil, aspectFill: false),
+              let networkingCacheURL = networkingCacheURL else { return }
+        
+        let destinationURL = try Networking().destinationURL(for: path)
+        let name = destinationURL.deletingPathExtension().lastPathComponent
+        
+        try FileManager.default.contentsOfDirectory(at: networkingCacheURL, includingPropertiesForKeys: [], options: []).forEach { url in
+            // Any cached thumnail is going to start with this name.
+            // It might also have dimensions and/or the aspect fill property after.
+            if url.lastPathComponent.starts(with: name) {
+                try FileManager.default.remove(at: url)
+            }
+        }
+    }
+    
+    /// Returns the URL used to store the thumnail for a certain path and properties.
+    /// Useful to find where a download thumbnail is located.
+    /// - Parameters:
+    ///   - path: The path used to download the thumbnail.
+    ///   - dimensions: The dimensions of the thumbnail to get.
+    ///   - aspectFill: Whether the thumbnail was fetched with aspectFill.
+    /// - Throws: An error if the cached data URL couldn’t be created.
+    /// - Returns: The URL where the thumbnail has been stored.
+    public func getCachedThumbnailURL(forItemAtPath path: String, with dimensions: CGSize?, aspectFill: Bool) throws -> URL? {
+        guard let path = nextcloudPreviewPath(at: path, with: dimensions, aspectFill: aspectFill) else { return nil }
+        return try Networking().destinationURL(for: path)
+    }
     
     /// Deletes all downloaded data that has been cached.
     /// - Throws: An error if the resources couldn't be deleted.

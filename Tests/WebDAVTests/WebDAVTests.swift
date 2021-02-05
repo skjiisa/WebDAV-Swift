@@ -341,10 +341,10 @@ final class WebDAVTests: XCTestCase {
     
     //MARK: Thumbnails
     
-    private func downloadThumbnail(imagePath: String, account: SimpleAccount, password: String) {
+    private func downloadThumbnail(imagePath: String, account: SimpleAccount, password: String, with dimensions: CGSize? = nil, aspectFill: Bool = false) {
         let expectation = XCTestExpectation(description: "Download thumbnail from WebDAV")
         
-//        try? webDAV.deleteCachedData(forItemAtPath: imagePath, account: account)
+        try? webDAV.deleteCachedThumbnail(forItemAtPath: imagePath, with: dimensions, aspectFill: aspectFill)
         
         webDAV.downloadThumbnail(path: imagePath, account: account, password: password, with: nil) { image, cachedImageURL, error in
             XCTAssertNil(error)
@@ -366,7 +366,37 @@ final class WebDAVTests: XCTestCase {
         
         downloadThumbnail(imagePath: imagePath, account: account, password: password)
         
-//        XCTAssertNoThrow(try webDAV.deleteCachedData(forItemAtPath: imagePath, account: account))
+        XCTAssertNoThrow(try webDAV.deleteCachedThumbnail(forItemAtPath: imagePath, with: nil, aspectFill: false))
+    }
+    
+    func testSpecificThumbnailCache() throws {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
+            return XCTFail("You need to set the image_path in the environment.")
+        }
+        
+        downloadThumbnail(imagePath: imagePath, account: account, password: password)
+        
+        let cachedThumbnailURL = try webDAV.getCachedThumbnailURL(forItemAtPath: imagePath, with: nil, aspectFill: false)!
+        try webDAV.deleteCachedThumbnail(forItemAtPath: imagePath, with: nil, aspectFill: false)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailURL.path))
+    }
+    
+    func testGeneralThumbnailCache() throws {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
+            return XCTFail("You need to set the image_path in the environment.")
+        }
+        
+        downloadThumbnail(imagePath: imagePath, account: account, password: password, with: nil, aspectFill: true)
+        downloadThumbnail(imagePath: imagePath, account: account, password: password, with: nil, aspectFill: false)
+        
+        let cachedThumbnailFillURL = try webDAV.getCachedThumbnailURL(forItemAtPath: imagePath, with: nil, aspectFill: true)!
+        let cachedThumbnailFitURL  = try webDAV.getCachedThumbnailURL(forItemAtPath: imagePath, with: nil, aspectFill: false)!
+        // Delete all cached thumbnails and check that they're both gone
+        try webDAV.deleteAllCachedThumbnails(forItemAtPath: imagePath)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailFillURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailFitURL.path))
     }
     
     //MARK: Private
