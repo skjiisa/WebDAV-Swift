@@ -99,12 +99,7 @@ public class WebDAVFile: NSObject, Identifiable {
     
     /// The name of the file without its extension.
     public var name: String {
-        let extensionLength = self.extension.count
-        if !isDirectory,
-           extensionLength > 0 {
-            return String(fileName.dropLast(extensionLength + 1))
-        }
-        return fileName
+        isDirectory ? fileName : fileURL.deletingPathExtension().lastPathComponent
     }
     
 }
