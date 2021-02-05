@@ -323,6 +323,7 @@ final class WebDAVTests: XCTestCase {
         
         let cachedImageURL = try webDAV.getCachedDataURL(forItemAtPath: imagePath, account: account)!
         XCTAssert(FileManager.default.fileExists(atPath: cachedImageURL.path))
+        XCTAssertNotNil(webDAV.getCachedImage(forItemAtPath: imagePath, account: account))
         try webDAV.deleteCachedData(forItemAtPath: imagePath, account: account)
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedImageURL.path))
     }
@@ -379,7 +380,8 @@ final class WebDAVTests: XCTestCase {
         downloadThumbnail(imagePath: imagePath, account: account, password: password)
         
         let cachedThumbnailURL = try webDAV.getCachedThumbnailURL(forItemAtPath: imagePath, account: account, with: nil, aspectFill: false)!
-        XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: cachedThumbnailURL.path))
+        XCTAssertNotNil(webDAV.getCachedThumbnail(forItemAtPath: imagePath, account: account, with: nil, aspectFill: false))
         try webDAV.deleteCachedThumbnail(forItemAtPath: imagePath, account: account, with: nil, aspectFill: false)
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailURL.path))
     }
@@ -396,9 +398,11 @@ final class WebDAVTests: XCTestCase {
         let cachedThumbnailFillURL = try webDAV.getCachedThumbnailURL(forItemAtPath: imagePath, account: account, with: nil, aspectFill: true)!
         let cachedThumbnailFitURL  = try webDAV.getCachedThumbnailURL(forItemAtPath: imagePath, account: account, with: nil, aspectFill: false)!
         
-        // Delete all cached thumbnails and check that they're both gone
         XCTAssert(FileManager.default.fileExists(atPath: cachedThumbnailFillURL.path))
         XCTAssert(FileManager.default.fileExists(atPath: cachedThumbnailFitURL.path))
+        XCTAssertEqual(try webDAV.getAllCachedThumbnails(forItemAtPath: imagePath, account: account).count, 2)
+        
+        // Delete all cached thumbnails and check that they're both gone
         try webDAV.deleteAllCachedThumbnails(forItemAtPath: imagePath, account: account)
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailFillURL.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailFitURL.path))

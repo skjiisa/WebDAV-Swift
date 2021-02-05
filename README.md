@@ -100,6 +100,7 @@ Image cache functions include
 + `downloadImage`
 + `deleteCachedData`
 + `getCachedDataURL`
++ `getCachedImage`
 + `deleteAllCachedData`
 + `cancelRequest`
 + `getCacheByteCount`
@@ -128,7 +129,9 @@ Thumbnail Functions include
 + `deleteCachedThumbnail`
 + `deleteAllCachedThumbnails`
 + `getAllCachedThumbnailURLs`
++ `getAllCachedThumbnails`
 + `getCachedThumbnailURL`
++ `getCachedThumbnail`
 
 #### Cancelling image requests
 
