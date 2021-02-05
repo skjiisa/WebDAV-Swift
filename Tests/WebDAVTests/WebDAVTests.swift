@@ -230,8 +230,8 @@ final class WebDAVTests: XCTestCase {
         
         // List files to ensure it was created
         
-        webDAV.listFiles(atPath: path, account: account, password: password) { files, _ in
-            let newFile = files?.first(where: { ($0.path as NSString).lastPathComponent == path })
+        webDAV.listFiles(atPath: "/", account: account, password: password) { files, _ in
+            let newFile = files?.first(where: { $0.fileName == path })
             XCTAssertNotNil(newFile)
             listFilesBefore.fulfill()
         }
