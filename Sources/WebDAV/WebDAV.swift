@@ -377,6 +377,15 @@ public class WebDAV: NSObject, URLSessionDelegate {
         }
     }
     
+    public func getAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> [UIImage] {
+        // We can't use imageFromCache(path) to get the images from a memory cache
+        // because we can't generate the path for every possible thumbnail. Instead
+        // we'll get the URLs from getAllCachedThumbnailURLs and get the data from those.
+        try getAllCachedThumbnailURLs(forItemAtPath: path, account: account).compactMap { url -> UIImage? in
+            UIImage(data: try Data(contentsOf: url))
+        }
+    }
+    
     /// Get the URL for the cached thumbnail for a certain path and properties.
     /// Useful to find where a download thumbnail is located.
     /// - Parameters:
