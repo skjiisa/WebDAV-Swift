@@ -105,9 +105,36 @@ Image cache functions include
 + `getCacheByteCount`
 + `getCacheSize`
 
-Unlike the other request functions, `downloadImage` does not return a URLSessionTask.
-This is because it's based on 3lvis/Networking.
-Instead it returns a request identifier that can be used to cancel the request using the `cancelRequest` function.
+#### Thumbnails
+
+Along with downloading full-sized images, you can download **thumbnails** from Nextcloud servers.
+This currently only works with Nextcloud servers as thumbnail generation is not part of the WebDAV standard.
+
+Thumbnail generation requires you to specify to render the thumbnail with aspect fill or aspect fit can include dimensions.
+If no dimensions are specified, the server's default will be used (default is 64x64 on Nextcloud).
+When getting the URL of or deleting a cached URL, you must also specify these arguments in order to access the correct specific thumbnail.
+If you wish to access all thumbnails for a specific image, you can use `getAllCachedThumbnailURLs(forItemAtPath:, account:)` and `deleteAllCachedThumbnails(forItemAtPath:, account:)`.
+
+```swift
+func downloadThumbnail<A: WebDAVAccount>(
+    path: String, account: A, password: String, with dimensions: CGSize?, aspectFill: Bool = true,
+    completion: @escaping (_ image: UIImage?, _ cachedImageURL: URL?, _ error: WebDAVError?) -> Void
+) -> String?
+```
+
+Thumbnail Functions include
+
++ `downloadThumbnail`
++ `deleteCachedThumbnail`
++ `deleteAllCachedThumbnails`
++ `getAllCachedThumbnailURLs`
++ `getCachedThumbnailURL`
+
+#### Cancelling image requests
+
+Unlike the other request functions, `downloadImage` and `downloadThumbnail` do not return a URLSessionTask.
+This is because they are based on 3lvis/Networking.
+Instead they return a request identifier that can be used to cancel the request using the `cancelRequest` function.
 
 ## Contribution
 
