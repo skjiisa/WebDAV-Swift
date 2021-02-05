@@ -324,33 +324,39 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - dimensions: The dimensions of the thumbnail to delete.
     ///   - aspectFill: Whether the thumbnail was fetched with aspectFill.
     /// - Throws: An error if the cached data URL couldn’t be created or the file can't be deleted.
-    public func deleteCachedThumbnail(forItemAtPath path: String, with dimensions: CGSize?, aspectFill: Bool) throws {
-        guard let path = nextcloudPreviewPath(at: path, with: dimensions, aspectFill: aspectFill) else { return }
+    public func deleteCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with dimensions: CGSize?, aspectFill: Bool) throws {
+        guard let networking = thumbnailNetworking(for: account, password: ""),
+              let path = nextcloudPreviewPath(at: path, with: dimensions, aspectFill: aspectFill) else { return }
         
-        let destinationURL = try Networking().destinationURL(for: path)
+        let destinationURL = try networking.destinationURL(for: path)
         if FileManager.default.fileExists(atPath: destinationURL.path) {
             try FileManager.default.removeItem(atPath: destinationURL.path)
         }
     }
     
-    public func deleteAllCachedThumbnails(forItemAtPath path: String) throws {
-        // Getting the path with no dimensions and aspect fit will give the shortest form of the path with no extras added.
-        guard let path = nextcloudPreviewPath(at: path, with: nil, aspectFill: false),
-              let networkingCacheURL = networkingCacheURL else { return }
-        
-        let destinationURL = try Networking().destinationURL(for: path)
-        let name = destinationURL.deletingPathExtension().lastPathComponent
-        
-        try FileManager.default.contentsOfDirectory(at: networkingCacheURL, includingPropertiesForKeys: [], options: []).forEach { url in
-            // Any cached thumnail is going to start with this name.
-            // It might also have dimensions and/or the aspect fill property after.
-            if url.lastPathComponent.starts(with: name) {
-                try FileManager.default.remove(at: url)
-            }
+    public func deleteAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
+        try getAllCachedThumbnailURLs(forItemAtPath: path, account: account).forEach { url in
+            try FileManager.default.remove(at: url)
         }
     }
     
-    /// Returns the URL used to store the thumnail for a certain path and properties.
+    public func getAllCachedThumbnailURLs<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> [URL] {
+        // Getting the path with no dimensions and aspect fit will give the shortest form of the path with no extras added.
+        guard let networking = thumbnailNetworking(for: account, password: ""),
+              let path = nextcloudPreviewPath(at: path, with: nil, aspectFill: false),
+              let networkingCacheURL = networkingCacheURL else { return [] }
+        
+        let destinationURL = try networking.destinationURL(for: path)
+        let name = destinationURL.deletingPathExtension().lastPathComponent
+        
+        return try FileManager.default.contentsOfDirectory(at: networkingCacheURL, includingPropertiesForKeys: [], options: []).filter { url -> Bool in
+            // Any cached thumbnail is going to start with this name.
+            // It might also have dimensions and/or the aspect fill property after.
+            url.lastPathComponent.starts(with: name)
+        }
+    }
+    
+    /// Returns the URL used to store the thumbnail for a certain path and properties.
     /// Useful to find where a download thumbnail is located.
     /// - Parameters:
     ///   - path: The path used to download the thumbnail.
@@ -358,9 +364,9 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - aspectFill: Whether the thumbnail was fetched with aspectFill.
     /// - Throws: An error if the cached data URL couldn’t be created.
     /// - Returns: The URL where the thumbnail has been stored.
-    public func getCachedThumbnailURL(forItemAtPath path: String, with dimensions: CGSize?, aspectFill: Bool) throws -> URL? {
+    public func getCachedThumbnailURL<A: WebDAVAccount>(forItemAtPath path: String, account: A, with dimensions: CGSize?, aspectFill: Bool) throws -> URL? {
         guard let path = nextcloudPreviewPath(at: path, with: dimensions, aspectFill: aspectFill) else { return nil }
-        return try Networking().destinationURL(for: path)
+        return try thumbnailNetworking(for: account, password: "")?.destinationURL(for: path)
     }
     
     /// Deletes all downloaded data that has been cached.
