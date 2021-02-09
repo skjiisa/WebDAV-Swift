@@ -381,10 +381,22 @@ final class WebDAVTests: XCTestCase {
     }
 
     static var allTests = [
+        // WebDAV
         ("testListFiles", testListFiles),
+        ("testListFilesFoldersFirst", testListFilesFoldersFirst),
         ("testUploadData", testUploadData),
         ("testDownloadData", testDownloadData),
         ("testCreateFolder", testCreateFolder),
-        ("testDeleteFile", testDeleteFile)
+        ("testDeleteFile", testDeleteFile),
+        ("testMoveFile", testMoveFile),
+        ("testURLScheme", testURLScheme),
+        // Image Cache
+        ("testDownloadImage", testDownloadImage),
+        ("testImageCache", testImageCache),
+        ("testDeleteAllCachedData", testDeleteAllCachedData),
+        // Thumbnails
+        ("testDownloadThumbnail", testDownloadThumbnail),
+        ("testSpecificThumbnailCache", testSpecificThumbnailCache),
+        ("testGeneralThumbnailCache", testGeneralThumbnailCache)
     ]
 }
