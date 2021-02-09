@@ -13,4 +13,5 @@ internal enum HTTPMethod: String {
     case propfind = "PROPFIND"
     case mkcol = "MKCOL"
     case move = "MOVE"
+    case copy = "COPY"
 }

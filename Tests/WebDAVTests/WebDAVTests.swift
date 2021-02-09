@@ -149,9 +149,36 @@ final class WebDAVTests: XCTestCase {
         
         wait(for: [expectation], timeout: 10.0)
         
-        // Check that the file exists as expected
+        // Check that the file exist in the new location but not the original
         
         checkFor(fileNamed: fileName, in: folder, account: account, password: password)
+        checkFor(fileNamed: fileName, account: account, password: password, checkNotExist: true)
+        deleteFile(path: folder, account: account, password: password)
+    }
+    
+    func testCopyFile() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "Copy uploaded file")
+        
+        let folder = createFolder(account: account, password: password)
+        let (_, fileName, _) = uploadData(account: account, password: password)
+        
+        let destinationPath = folder + "/" + fileName
+        
+        // Move file
+        
+        webDAV.copyFile(fromPath: fileName, to: destinationPath, account: account, password: password) { error in
+            XCTAssertNil(error)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+        
+        // Check that the file exists in both locations
+        
+        checkFor(fileNamed: fileName, in: folder, account: account, password: password)
+        checkFor(fileNamed: fileName, account: account, password: password)
         deleteFile(path: folder, account: account, password: password)
     }
     

@@ -213,6 +213,16 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return basicDataTask(request: request, completion: completion)
     }
     
+    @discardableResult
+    public func copyFile<A: WebDAVAccount>(fromPath path: String, to destination: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+        guard let request = authorizedRequest(path: path, destination: destination, account: account, password: password, method: .copy) else {
+            completion(.invalidCredentials)
+            return nil
+        }
+        
+        return basicDataTask(request: request, completion: completion)
+    }
+    
     //MARK: Networking Requests
     // Somewhat confusing header title, but this refers to requests made using the Networking library
     
