@@ -12,4 +12,5 @@ internal enum HTTPMethod: String {
     case delete = "DELETE"
     case propfind = "PROPFIND"
     case mkcol = "MKCOL"
+    case move = "MOVE"
 }

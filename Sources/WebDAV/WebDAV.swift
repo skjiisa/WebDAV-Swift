@@ -213,6 +213,21 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return task
     }
     
+    @discardableResult
+    public func moveFile<A: WebDAVAccount>(fromPath path: String, to destination: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+        guard let request = authorizedRequest(path: path, destination: destination, account: account, password: password, method: .move) else {
+            completion(.invalidCredentials)
+            return nil
+        }
+        
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+            completion(WebDAVError.getError(response: response, error: error))
+        }
+        
+        task.resume()
+        return task
+    }
+    
     //MARK: Networking Requests
     // Somewhat confusing header title, but this refers to requests made using the Networking library
     
@@ -484,6 +499,15 @@ public class WebDAV: NSObject, URLSessionDelegate {
         request.httpMethod = method.rawValue
         request.addValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
         
+        return request
+    }
+    
+    private func authorizedRequest<A: WebDAVAccount>(path: String, destination: String, account: A, password: String, method: HTTPMethod) -> URLRequest? {
+        guard var request = authorizedRequest(path: path, account: account, password: password, method: method),
+              let unwrappedAccount = UnwrappedAccount(account: account) else { return nil }
+        
+        let destionationURL = unwrappedAccount.baseURL.appendingPathComponent(destination)
+        request.addValue(destionationURL.absoluteString, forHTTPHeaderField: "Destination")
         return request
     }
     

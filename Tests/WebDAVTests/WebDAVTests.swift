@@ -258,6 +258,70 @@ final class WebDAVTests: XCTestCase {
         wait(for: [listFilesAfter], timeout: 10.0)
     }
     
+    func testMoveFile() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let createExpectation = XCTestExpectation(description: "Create folder in WebDAV")
+        let deleteExpectation = XCTestExpectation(description: "Delete folder")
+        
+        let uploadExpectation = XCTestExpectation(description: "Upload data to WebDAV")
+        let moveExpectation = XCTestExpectation(description: "Move uploaded file")
+        let checkExpectation = XCTestExpectation(description: "Check uploaded file")
+        
+        let folder = UUID().uuidString
+        
+        let name = UUID().uuidString
+        let fileName = name + ".txt"
+        let destinationPath = folder + "/" + fileName
+        let data = UUID().uuidString.data(using: .utf8)!
+        
+        // Create folder
+        
+        webDAV.createFolder(atPath: folder, account: account, password: password) { error in
+            XCTAssertNil(error)
+            createExpectation.fulfill()
+        }
+        
+        wait(for: [createExpectation], timeout: 10.0)
+        
+        // Upload data
+        
+        webDAV.upload(data: data, toPath: fileName, account: account, password: password) { error in
+            XCTAssertNil(error)
+            uploadExpectation.fulfill()
+        }
+        
+        wait(for: [uploadExpectation], timeout: 10.0)
+        
+        // Move file
+        
+        webDAV.moveFile(fromPath: fileName, to: destinationPath, account: account, password: password) { error in
+            XCTAssertNil(error)
+            moveExpectation.fulfill()
+        }
+        
+        wait(for: [moveExpectation], timeout: 10.0)
+        
+        // Check that the file exists as expected
+        
+        webDAV.listFiles(atPath: folder, account: account, password: password) { files, error in
+            guard files?.first(where: { $0.fileName == fileName }) != nil else {
+                return XCTFail("Created file not found.")
+            }
+            checkExpectation.fulfill()
+        }
+        
+        wait(for: [checkExpectation], timeout: 10.0)
+        
+        // Delete the folder
+        
+        webDAV.deleteFile(atPath: folder, account: account, password: password) { _ in
+            deleteExpectation.fulfill()
+        }
+        
+        wait(for: [deleteExpectation], timeout: 10.0)
+    }
+    
     func testURLScheme() {
         guard let (accountConstant, password) = getAccount(),
               let baseURL = accountConstant.baseURL else { return XCTFail() }
