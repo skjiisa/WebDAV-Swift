@@ -203,6 +203,16 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return basicDataTask(request: request, completion: completion)
     }
     
+    /// Move the file to the specified destination.
+    /// - Parameters:
+    ///   - path: The original path of the file.
+    ///   - destination: The desired destination path of the file.
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
+    /// - Returns: The data task for the request.
     @discardableResult
     public func moveFile<A: WebDAVAccount>(fromPath path: String, to destination: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, destination: destination, account: account, password: password, method: .move) else {
@@ -213,6 +223,16 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return basicDataTask(request: request, completion: completion)
     }
     
+    /// Copy the file to the specified destination.
+    /// - Parameters:
+    ///   - path: The original path of the file.
+    ///   - destination: The desired destination path of the copy.
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
+    /// - Returns: The data task for the request.
     @discardableResult
     public func copyFile<A: WebDAVAccount>(fromPath path: String, to destination: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let request = authorizedRequest(path: path, destination: destination, account: account, password: password, method: .copy) else {
