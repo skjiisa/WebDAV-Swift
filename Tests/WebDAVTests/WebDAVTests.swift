@@ -78,9 +78,11 @@ final class WebDAVTests: XCTestCase {
     func testUploadFile() throws {
         guard let (account, password) = getAccount() else { return XCTFail() }
         
-        let expectation = XCTestExpectation(description: "Upload file")
+        let uploadExpectation = XCTestExpectation(description: "Upload file")
+        let checkExpectation = XCTestExpectation(description: "Check file")
         
-        let path = UUID().uuidString + ".txt"
+        let name = UUID().uuidString
+        let path = name + ".txt"
         let data = UUID().uuidString.data(using: .utf8)!
         let tempFileURL = FileManager.default.temporaryDirectory.appendingPathComponent(path)
         try data.write(to: tempFileURL)
@@ -88,10 +90,22 @@ final class WebDAVTests: XCTestCase {
         webDAV.upload(file: tempFileURL, toPath: path, account: account, password: password) { error in
             try? FileManager.default.removeItem(at: tempFileURL)
             XCTAssertNil(error)
-            expectation.fulfill()
+            uploadExpectation.fulfill()
         }
         
-        wait(for: [expectation], timeout: 10.0)
+        wait(for: [uploadExpectation], timeout: 10.0)
+        
+        webDAV.listFiles(atPath: "/", account: account, password: password) { files, error in
+            guard let file = files?.first(where: { $0.path == path }) else {
+                return XCTFail("Expected file not found \(error?.localizedDescription ?? "")")
+            }
+            XCTAssertEqual(file.name, name)
+            XCTAssertEqual(file.extension, "txt")
+            
+            checkExpectation.fulfill()
+        }
+        
+        wait(for: [checkExpectation], timeout: 10.0)
         
         deleteFile(path: path, account: account, password: password)
     }
