@@ -176,12 +176,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// - Returns: The data task for the request.
     @discardableResult
     public func createFolder<A: WebDAVAccount>(atPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
-        guard let request = authorizedRequest(path: path, account: account, password: password, method: .mkcol) else {
-            completion(.invalidCredentials)
-            return nil
-        }
-        
-        return basicDataTask(request: request, completion: completion)
+        basicDataTask(path: path, account: account, password: password, method: .mkcol, completion: completion)
     }
     
     /// Delete the file or folder at the specified path.
@@ -195,12 +190,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// - Returns: The data task for the request.
     @discardableResult
     public func deleteFile<A: WebDAVAccount>(atPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
-        guard let request = authorizedRequest(path: path, account: account, password: password, method: .delete) else {
-            completion(.invalidCredentials)
-            return nil
-        }
-        
-        return basicDataTask(request: request, completion: completion)
+        basicDataTask(path: path, account: account, password: password, method: .delete, completion: completion)
     }
     
     /// Move the file to the specified destination.
@@ -215,12 +205,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// - Returns: The data task for the request.
     @discardableResult
     public func moveFile<A: WebDAVAccount>(fromPath path: String, to destination: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
-        guard let request = authorizedRequest(path: path, destination: destination, account: account, password: password, method: .move) else {
-            completion(.invalidCredentials)
-            return nil
-        }
-        
-        return basicDataTask(request: request, completion: completion)
+        basicDataTask(path: path, destination: destination, account: account, password: password, method: .move, completion: completion)
     }
     
     /// Copy the file to the specified destination.
@@ -235,12 +220,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// - Returns: The data task for the request.
     @discardableResult
     public func copyFile<A: WebDAVAccount>(fromPath path: String, to destination: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
-        guard let request = authorizedRequest(path: path, destination: destination, account: account, password: password, method: .copy) else {
-            completion(.invalidCredentials)
-            return nil
-        }
-        
-        return basicDataTask(request: request, completion: completion)
+        basicDataTask(path: path, destination: destination, account: account, password: password, method: .copy, completion: completion)
     }
     
     //MARK: Networking Requests
@@ -517,16 +497,18 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return request
     }
     
-    private func authorizedRequest<A: WebDAVAccount>(path: String, destination: String, account: A, password: String, method: HTTPMethod) -> URLRequest? {
+    private func basicDataTask<A: WebDAVAccount>(path: String, destination: String? = nil, account: A, password: String, method: HTTPMethod, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: method),
-              let unwrappedAccount = UnwrappedAccount(account: account) else { return nil }
+              let unwrappedAccount = UnwrappedAccount(account: account) else {
+            completion(.invalidCredentials)
+            return nil
+        }
         
-        let destionationURL = unwrappedAccount.baseURL.appendingPathComponent(destination)
-        request.addValue(destionationURL.absoluteString, forHTTPHeaderField: "Destination")
-        return request
-    }
-    
-    private func basicDataTask(request: URLRequest, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+        if let destination = destination {
+            let destionationURL = unwrappedAccount.baseURL.appendingPathComponent(destination)
+            request.addValue(destionationURL.absoluteString, forHTTPHeaderField: "Destination")
+        }
+        
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
             completion(WebDAVError.getError(response: response, error: error))
         }
