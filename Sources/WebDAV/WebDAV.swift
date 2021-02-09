@@ -181,12 +181,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            completion(WebDAVError.getError(response: response, error: error))
-        }
-        
-        task.resume()
-        return task
+        return basicDataTask(request: request, completion: completion)
     }
     
     /// Delete the file or folder at the specified path.
@@ -205,12 +200,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            completion(WebDAVError.getError(response: response, error: error))
-        }
-        
-        task.resume()
-        return task
+        return basicDataTask(request: request, completion: completion)
     }
     
     @discardableResult
@@ -220,12 +210,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
             return nil
         }
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            completion(WebDAVError.getError(response: response, error: error))
-        }
-        
-        task.resume()
-        return task
+        return basicDataTask(request: request, completion: completion)
     }
     
     //MARK: Networking Requests
@@ -509,6 +494,15 @@ public class WebDAV: NSObject, URLSessionDelegate {
         let destionationURL = unwrappedAccount.baseURL.appendingPathComponent(destination)
         request.addValue(destionationURL.absoluteString, forHTTPHeaderField: "Destination")
         return request
+    }
+    
+    private func basicDataTask(request: URLRequest, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+            completion(WebDAVError.getError(response: response, error: error))
+        }
+        
+        task.resume()
+        return task
     }
     
     private func networking<A: WebDAVAccount>(for account: A, password: String) -> Networking? {
