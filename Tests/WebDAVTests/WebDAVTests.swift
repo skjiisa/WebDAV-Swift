@@ -193,6 +193,7 @@ final class WebDAVTests: XCTestCase {
         
         checkFor(fileNamed: fileName, in: folder, account: account, password: password)
         checkFor(fileNamed: fileName, account: account, password: password)
+        deleteFile(path: fileName, account: account, password: password)
         deleteFile(path: folder, account: account, password: password)
     }
     
