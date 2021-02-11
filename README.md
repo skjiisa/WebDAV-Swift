@@ -69,6 +69,8 @@ The functions currently available include
 + `download`
 + `createFolder`
 + `deleteFile`
++ `moveFile`
++ `copyFile`
 
 These functions will each return a [URLSessionTask](https://developer.apple.com/documentation/foundation/urlsessiontask) which can be cancelled later.
 
