@@ -8,7 +8,7 @@
 import Foundation
 import SWXMLHash
 
-public class WebDAVFile: NSObject, Identifiable {
+public struct WebDAVFile: Identifiable, Codable {
     
     //MARK: Properties
     
@@ -29,7 +29,7 @@ public class WebDAVFile: NSObject, Identifiable {
         self.etag = etag
     }
     
-    convenience init?(xml: XMLIndexer, baseURL: String?) {
+    init?(xml: XMLIndexer, baseURL: String?) {
         let properties = xml["propstat"][0]["prop"]
         guard var path = xml["href"].element?.text,
               let dateString = properties["getlastmodified"].element?.text,
@@ -79,7 +79,7 @@ public class WebDAVFile: NSObject, Identifiable {
     
     //MARK: Public
     
-    public override var description: String {
+    public var description: String {
         "WebDAVFile(path: \(path), id: \(id), isDirectory: \(isDirectory), lastModified: \(WebDAVFile.rfc1123Formatter.string(from: lastModified)), size: \(size), etag: \(etag))"
     }
     
