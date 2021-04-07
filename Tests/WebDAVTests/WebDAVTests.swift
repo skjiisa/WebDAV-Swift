@@ -505,11 +505,16 @@ final class WebDAVTests: XCTestCase {
         ("testListFiles", testListFiles),
         ("testListFilesFoldersFirst", testListFilesFoldersFirst),
         ("testUploadData", testUploadData),
+        //("testUploadFile", testUploadFile),   // Requires iOS 10
         ("testDownloadData", testDownloadData),
         ("testCreateFolder", testCreateFolder),
         ("testDeleteFile", testDeleteFile),
         ("testMoveFile", testMoveFile),
         ("testURLScheme", testURLScheme),
+        ("testCopyFile", testCopyFile),
+        // Files Cache
+        ("testFilesSaveToMemoryCache", testFilesSaveToMemoryCache),
+        ("testFilesReadFromMemoryCache", testFilesReadFromMemoryCache),
         // Image Cache
         ("testDownloadImage", testDownloadImage),
         ("testImageCache", testImageCache),
@@ -517,6 +522,8 @@ final class WebDAVTests: XCTestCase {
         // Thumbnails
         ("testDownloadThumbnail", testDownloadThumbnail),
         ("testSpecificThumbnailCache", testSpecificThumbnailCache),
-        ("testGeneralThumbnailCache", testGeneralThumbnailCache)
+        ("testGeneralThumbnailCache", testGeneralThumbnailCache),
+        // OCS
+        ("testColorHex", testColorHex)
     ]
 }
