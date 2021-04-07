@@ -43,7 +43,7 @@ internal struct UnwrappedAccount: Hashable {
 
 //MARK: AccountPath
 
-public struct AccountPath: Hashable {
+public struct AccountPath: Hashable, Codable {
     private static let slash = CharacterSet(charactersIn: "/")
     
     var username: String?

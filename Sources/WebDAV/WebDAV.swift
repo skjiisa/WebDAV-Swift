@@ -10,6 +10,7 @@ import SWXMLHash
 import Networking
 
 public class WebDAV: NSObject, URLSessionDelegate {
+    static let domain = "app.lyons.webdav-swift"
     
     //MARK: Properties
     
