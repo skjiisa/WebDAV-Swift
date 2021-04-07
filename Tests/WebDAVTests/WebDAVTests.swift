@@ -222,6 +222,28 @@ final class WebDAVTests: XCTestCase {
         wait(for: [expectation], timeout: 10.0)
     }
     
+    //MARK: Files Cache
+    
+    func testFilesSaveToMemoryCache() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        // List files
+        
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false, caching: []) { [weak self] files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            
+            let cachedFiles = self?.webDAV.filesCache[AccountPath(account: account, path: "/")]
+            XCTAssertEqual(cachedFiles, files)
+            
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
     //MARK: Image Cache
     
     func testDownloadImage() {

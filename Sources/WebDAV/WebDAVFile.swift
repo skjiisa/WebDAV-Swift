@@ -8,7 +8,7 @@
 import Foundation
 import SWXMLHash
 
-public struct WebDAVFile: Identifiable, Codable {
+public struct WebDAVFile: Identifiable, Codable, Equatable {
     
     //MARK: Properties
     
