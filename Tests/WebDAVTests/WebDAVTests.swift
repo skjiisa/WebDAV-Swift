@@ -231,7 +231,7 @@ final class WebDAVTests: XCTestCase {
         
         // List files
         
-        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false, caching: []) { [weak self] files, error in
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false) { [weak self] files, error in
             XCTAssertNotNil(files)
             XCTAssertNil(error)
             
@@ -242,6 +242,45 @@ final class WebDAVTests: XCTestCase {
         }
         
         wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testFilesReadFromMemoryCache() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let dummyExpectation = XCTestExpectation(description: "List dummy files from cache")
+        let realExpectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        // Force fake files into the memory cache
+        let dummyFiles = [
+            WebDAVFile(path: "test0.txt", id: "0", isDirectory: false, lastModified: Date(), size: 0, etag: "0"),
+            WebDAVFile(path: "test1.txt", id: "1", isDirectory: false, lastModified: Date(), size: 0, etag: "1")
+        ]
+        
+        webDAV.filesCache[AccountPath(account: account, path: "/")] = dummyFiles
+        
+        // List cached dummy files
+        
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(dummyFiles, files)
+            
+            dummyExpectation.fulfill()
+        }
+        
+        // List real files
+        
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            
+            XCTAssertNotEqual(dummyFiles, files)
+            
+            realExpectation.fulfill()
+        }
+        
+        wait(for: [dummyExpectation, realExpectation], timeout: 10.0)
     }
     
     //MARK: Image Cache
