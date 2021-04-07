@@ -18,6 +18,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     
     var networkings: [UnwrappedAccount: Networking] = [:]
     var thumbnailNetworkings: [UnwrappedAccount: Networking] = [:]
+    public var filesCache: [AccountPath: [WebDAVFile]] = [:]
     
     //MARK: WebDAV Requests
     
@@ -37,7 +38,19 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, foldersFirst: Bool = true, includeSelf: Bool = false, completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, foldersFirst: Bool = true, includeSelf: Bool = false, caching options: WebDAVCacheOptions = [], completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+        // Check the cache
+        let accountPath = AccountPath(account: account, path: path)
+        if !options.contains(.doNotReturnCachedResult) {
+            if let files = filesCache[accountPath] {
+                completion(files, nil)
+                
+                if !options.contains(.requestEvenIfCached) {
+                    return nil
+                }
+            }
+        }
+        
         guard var request = authorizedRequest(path: path, account: account, password: password, method: .propfind) else {
             completion(nil, .invalidCredentials)
             return nil
@@ -61,8 +74,9 @@ public class WebDAV: NSObject, URLSessionDelegate {
 """
         request.httpBody = body.data(using: .utf8)
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
             
+            // Check the response
             let response = response as? HTTPURLResponse
             
             guard 200...299 ~= response?.statusCode ?? 0,
@@ -76,12 +90,27 @@ public class WebDAV: NSObject, URLSessionDelegate {
                 config.shouldProcessNamespaces = true
             }.parse(string)
             
+            // Create WebDAVFiles from the XML response
+            
             var files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0, baseURL: account.baseURL) }
             if !includeSelf, !files.isEmpty {
                 files.removeFirst()
             }
             if foldersFirst {
                 files = files.filter { $0.isDirectory } + files.filter { !$0.isDirectory }
+            }
+            
+            // Caching
+            //TODO: Also cache to disk
+            
+            if !options.contains(.doNotCacheResult) && !options.contains(.removeExistingCache) {
+                // Cache the result
+                self?.filesCache[accountPath] = files
+            }
+            
+            if options.contains(.removeExistingCache) {
+                // Remove cached result
+                self?.filesCache.removeValue(forKey: accountPath)
             }
             
             return completion(files, nil)
