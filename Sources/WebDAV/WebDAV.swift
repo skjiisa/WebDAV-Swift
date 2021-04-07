@@ -495,6 +495,12 @@ public class WebDAV: NSObject, URLSessionDelegate {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("com.3lvis.networking")
     }
     
+    //MARK: Cache
+    
+    public func clearFilesMemoryCache() {
+        filesCache.removeAll()
+    }
+    
     //MARK: Internal
     
     /// Creates a basic authentication credential.

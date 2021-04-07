@@ -51,4 +51,14 @@ extension WebDAV {
         }
     }
     
+    public func clearFilesDiskCache() {
+        guard let fileURL = filesCacheURL,
+              FileManager.default.fileExists(atPath: fileURL.path) else { return }
+        do {
+            try FileManager.default.removeItem(at: fileURL)
+        } catch {
+            NSLog("Error removing files disk cache: \(error)")
+        }
+    }
+    
 }
