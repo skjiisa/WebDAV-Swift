@@ -465,14 +465,14 @@ public class WebDAV: NSObject, URLSessionDelegate {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("com.3lvis.networking")
     }
     
-    //MARK: Private
+    //MARK: Internal
     
     /// Creates a basic authentication credential.
     /// - Parameters:
     ///   - username: The username
     ///   - password: The password
     /// - Returns: A base-64 encoded credential if the provided credentials are valid (can be encoded as UTF-8).
-    private func auth(username: String, password: String) -> String? {
+    internal func auth(username: String, password: String) -> String? {
         let authString = username + ":" + password
         let authData = authString.data(using: .utf8)
         return authData?.base64EncodedString()
@@ -485,7 +485,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - password: The WebDAV password
     ///   - method: The HTTP Method for the request.
     /// - Returns: The URL request if the credentials are valid (can be encoded as UTF-8).
-    private func authorizedRequest<A: WebDAVAccount>(path: String, account: A, password: String, method: HTTPMethod) -> URLRequest? {
+    internal func authorizedRequest<A: WebDAVAccount>(path: String, account: A, password: String, method: HTTPMethod) -> URLRequest? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
               let auth = self.auth(username: unwrappedAccount.username, password: password) else { return nil }
         
@@ -497,7 +497,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return request
     }
     
-    private func basicDataTask<A: WebDAVAccount>(path: String, destination: String? = nil, account: A, password: String, method: HTTPMethod, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    internal func basicDataTask<A: WebDAVAccount>(path: String, destination: String? = nil, account: A, password: String, method: HTTPMethod, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: method),
               let unwrappedAccount = UnwrappedAccount(account: account) else {
             completion(.invalidCredentials)
@@ -517,7 +517,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return task
     }
     
-    private func networking<A: WebDAVAccount>(for account: A, password: String) -> Networking? {
+    internal func networking<A: WebDAVAccount>(for account: A, password: String) -> Networking? {
         guard let unwrappedAccount = UnwrappedAccount(account: account) else { return nil }
         let networking = networkings[unwrappedAccount] ?? {
             let networking = Networking(baseURL: unwrappedAccount.baseURL.absoluteString)
@@ -528,7 +528,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return networking
     }
     
-    private func nextcloudPreviewBaseURL(for baseURL: URL) -> URL? {
+    internal func nextcloudBaseURL(for baseURL: URL) -> URL? {
         guard baseURL.absoluteString.lowercased().contains("remote.php/dav/files/"),
               let index = baseURL.pathComponents.map({ $0.lowercased() }).firstIndex(of: "remote.php") else { return nil }
         
@@ -540,12 +540,16 @@ public class WebDAV: NSObject, URLSessionDelegate {
         
         // Add Nextcloud thumbnail components
         return previewURL
+    }
+    
+    internal func nextcloudPreviewBaseURL(for baseURL: URL) -> URL? {
+        return nextcloudBaseURL(for: baseURL)?
             .appendingPathComponent("index.php")
             .appendingPathComponent("core")
             .appendingPathComponent("preview.png")
     }
     
-    private func thumbnailNetworking<A: WebDAVAccount>(for account: A, password: String) -> Networking? {
+    internal func thumbnailNetworking<A: WebDAVAccount>(for account: A, password: String) -> Networking? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
               let previewURL = nextcloudPreviewBaseURL(for: unwrappedAccount.baseURL) else { return nil }
         
@@ -559,12 +563,12 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return networking
     }
     
-    private func networkingPath(_ path: String) -> String? {
+    internal func networkingPath(_ path: String) -> String? {
         let slashPath = path.first == "/" ? path : "/" + path
         return slashPath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
     }
     
-    private func nextcloudPreviewPath(at path: String, with dimensions: CGSize?, aspectFill: Bool = true) -> String? {
+    internal func nextcloudPreviewPath(at path: String, with dimensions: CGSize?, aspectFill: Bool = true) -> String? {
         guard var encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else { return nil }
         
         if encodedPath.hasPrefix("/") {

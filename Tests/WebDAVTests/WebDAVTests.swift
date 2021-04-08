@@ -313,6 +313,38 @@ final class WebDAVTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailFitURL.path))
     }
     
+    //MARK: OCS
+    
+    func testColorHex() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+                
+        let expectation = XCTestExpectation(description: "Get color")
+        
+        webDAV.getNextcloudColorHex(account: account, password: password) { color, error in
+            guard let color = color?.dropFirst() else { return XCTFail("No data returned") }
+            XCTAssert(color.allSatisfy { $0.isHexDigit })
+            XCTAssertNil(error)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testTheme() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "Get theme")
+        
+        webDAV.getNextcloudTheme(account: account, password: password) { theme, error in
+            guard let theme = theme else { return XCTFail("No data returned") }
+            XCTAssertNotNil(theme.url)
+            XCTAssertNil(error)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
     //MARK: Private
     
     private func getAccount() -> (account: SimpleAccount, password: String)? {
@@ -421,6 +453,8 @@ final class WebDAVTests: XCTestCase {
         
         wait(for: [expectation], timeout: 10.0)
     }
+    
+    //MARK: Static
 
     static var allTests = [
         // WebDAV
@@ -439,6 +473,9 @@ final class WebDAVTests: XCTestCase {
         // Thumbnails
         ("testDownloadThumbnail", testDownloadThumbnail),
         ("testSpecificThumbnailCache", testSpecificThumbnailCache),
-        ("testGeneralThumbnailCache", testGeneralThumbnailCache)
+        ("testGeneralThumbnailCache", testGeneralThumbnailCache),
+        // OCS
+        ("testTheme", testTheme),
+        ("testColorHex", testColorHex)
     ]
 }
