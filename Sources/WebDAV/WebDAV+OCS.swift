@@ -8,18 +8,28 @@
 import Foundation
 import SWXMLHash
 
-struct OCSTheme {
-    var name: String?
-    var url: String?
-    var slogan: String?
-    var colorHex: String?
-    var elementColorHex: String?
-    var brightElementColorHex: String?
-    var darkElementColorHex: String?
-    var logo: String?
-    var background: String?
-    var plainBackground: String?
-    var defaultBackground: String?
+/// Theming information from a WebDAV server that supports OCS.
+public struct OCSTheme {
+    /// Name of the server.
+    public var name: String?
+    /// URL of the server.
+    public var url: String?
+    /// Slogan of the server.
+    public var slogan: String?
+    /// The theme color as a hex code starting with #.
+    public var colorHex: String?
+    /// Element color as a hex code starting with #.
+    public var elementColorHex: String?
+    /// Element color to be used on light backgrounds as a hex code starting with #.
+    public var brightElementColorHex: String?
+    /// Element color to be used on dark backgrounds as a hex code starting with #.
+    public var darkElementColorHex: String?
+    /// URL of the logo.
+    public var logo: String?
+    /// URL of background image.
+    public var background: String?
+    public var plainBackground: String?
+    public var defaultBackground: String?
     
     internal init?(xml: XMLIndexer) {
         let theme = xml["ocs"]["data"]["capabilities"]["theming"]
@@ -40,8 +50,17 @@ struct OCSTheme {
 
 extension WebDAV {
     
+    /// Get the theme information from a WebDAV server that supports OCS (including Nextcloud).
+    /// - Parameters:
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - theme: The theme information for the server.
+    ///   - error: A WebDAVError if the call was unsuccessful.
+    /// - Returns: The data task for the request.
     @discardableResult
-    func getNextcloudTheme<A: WebDAVAccount>(account: A, password: String, completion: @escaping (_ theme: OCSTheme?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func getNextcloudTheme<A: WebDAVAccount>(account: A, password: String, completion: @escaping (_ theme: OCSTheme?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
               let auth = self.auth(username: unwrappedAccount.username, password: password),
               let baseURL = nextcloudBaseURL(for: unwrappedAccount.baseURL) else {
@@ -73,8 +92,17 @@ extension WebDAV {
         return task
     }
     
+    /// Get the theme color from a WebDAV server that supports OCS (including Nextcloud).
+    /// - Parameters:
+    ///   - account: The WebDAV account.
+    ///   - password: The WebDAV account's password.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
+    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   - color: The theme color for the server as a hex color starting with #.
+    ///   - error: A WebDAVError if the call was unsuccessful.
+    /// - Returns: The data task for the request.
     @discardableResult
-    func getNextcloudColorHex<A: WebDAVAccount>(account: A, password: String, completion: @escaping (_ color: String?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    public func getNextcloudColorHex<A: WebDAVAccount>(account: A, password: String, completion: @escaping (_ color: String?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         getNextcloudTheme(account: account, password: password) { theme, error in
             completion(theme?.colorHex, error)
         }
