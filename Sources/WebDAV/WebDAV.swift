@@ -46,13 +46,19 @@ public class WebDAV: NSObject, URLSessionDelegate {
     @discardableResult
     public func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, foldersFirst: Bool = true, includeSelf: Bool = false, caching options: WebDAVCacheOptions = [], completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         // Check the cache
+        var cachedResponse: [WebDAVFile]?
         let accountPath = AccountPath(account: account, path: path)
         if !options.contains(.doNotReturnCachedResult) {
             if let files = filesCache[accountPath] {
-                completion(WebDAV.sortedFiles(files, foldersFirst: foldersFirst, includeSelf: includeSelf), nil)
+                let sortedFiles = WebDAV.sortedFiles(files, foldersFirst: foldersFirst, includeSelf: includeSelf)
+                completion(sortedFiles, nil)
                 
                 if !options.contains(.requestEvenIfCached) {
                     return nil
+                } else {
+                    // Remember the cached completion. If the fetched results
+                    // are the same, don't bother completing again.
+                    cachedResponse = sortedFiles
                 }
             }
         }
@@ -112,7 +118,11 @@ public class WebDAV: NSObject, URLSessionDelegate {
                 self?.saveFilesCacheToDisk()
             }
             
-            return completion(WebDAV.sortedFiles(files, foldersFirst: foldersFirst, includeSelf: includeSelf), nil)
+            let sortedFiles = WebDAV.sortedFiles(files, foldersFirst: foldersFirst, includeSelf: includeSelf)
+            // Don't send a duplicate completion if the results are the same.
+            if sortedFiles != cachedResponse {
+                completion(sortedFiles, nil)
+            }
         }
         
         task.resume()
