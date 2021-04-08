@@ -141,6 +141,17 @@ Unlike the other request functions, `downloadImage` and `downloadThumbnail` do n
 This is because they are based on 3lvis/Networking.
 Instead they return a request identifier that can be used to cancel the request using the `cancelRequest` function.
 
+### Theming
+
+WebDAV servers that support OCS (such as Nextcloud and ownCloud) can give you theming information including accent color, name, slogan, background image, etc.
+Two functions exist for this:
+
++ `getNextcloudColorHex`
++ `getNextcloudTheme`
+
+`getNextcloudColorHex` will give the server's accent color as a hex code starting with '#' (eg `#0082c9`).
+`getNextcloudTheme` will give the server's full theming information in the form of an `OCSTheme` object.
+
 ## Contribution
 
 This package depends on [drmohundro/SWXMLHash](https://github.com/drmohundro/SWXMLHash)
