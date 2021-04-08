@@ -21,6 +21,11 @@ public class WebDAV: NSObject, URLSessionDelegate {
     var thumbnailNetworkings: [UnwrappedAccount: Networking] = [:]
     public var filesCache: [AccountPath: [WebDAVFile]] = [:]
     
+    public override init() {
+        super.init()
+        loadFilesCacheFromDisk()
+    }
+    
     //MARK: WebDAV Requests
     
     /// List the files and directories at the specified path.
@@ -44,7 +49,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
         let accountPath = AccountPath(account: account, path: path)
         if !options.contains(.doNotReturnCachedResult) {
             if let files = filesCache[accountPath] {
-                completion(files, nil)
+                completion(WebDAV.sortedFiles(files, foldersFirst: foldersFirst, includeSelf: includeSelf), nil)
                 
                 if !options.contains(.requestEvenIfCached) {
                     return nil
@@ -87,34 +92,27 @@ public class WebDAV: NSObject, URLSessionDelegate {
                 return completion(nil, webDAVError)
             }
             
+            // Create WebDAVFiles from the XML response
+            
             let xml = SWXMLHash.config { config in
                 config.shouldProcessNamespaces = true
             }.parse(string)
             
-            // Create WebDAVFiles from the XML response
-            
-            var files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0, baseURL: account.baseURL) }
-            if !includeSelf, !files.isEmpty {
-                files.removeFirst()
-            }
-            if foldersFirst {
-                files = files.filter { $0.isDirectory } + files.filter { !$0.isDirectory }
-            }
+            let files = xml["multistatus"]["response"].all.compactMap { WebDAVFile(xml: $0, baseURL: account.baseURL) }
             
             // Caching
-            //TODO: Also cache to disk
-            
-            if !options.contains(.doNotCacheResult) && !options.contains(.removeExistingCache) {
-                // Cache the result
-                self?.filesCache[accountPath] = files
-            }
             
             if options.contains(.removeExistingCache) {
                 // Remove cached result
                 self?.filesCache.removeValue(forKey: accountPath)
+                self?.saveFilesCacheToDisk()
+            } else if !options.contains(.doNotCacheResult) {
+                // Cache the result
+                self?.filesCache[accountPath] = files
+                self?.saveFilesCacheToDisk()
             }
             
-            return completion(files, nil)
+            return completion(WebDAV.sortedFiles(files, foldersFirst: foldersFirst, includeSelf: includeSelf), nil)
         }
         
         task.resume()
@@ -622,6 +620,19 @@ public class WebDAV: NSObject, URLSessionDelegate {
         }
         
         return thumbnailPath
+    }
+    
+    //MARK: Static
+    
+    public static func sortedFiles(_ files: [WebDAVFile], foldersFirst: Bool, includeSelf: Bool) -> [WebDAVFile] {
+        var files = files
+        if !includeSelf, !files.isEmpty {
+            files.removeFirst()
+        }
+        if foldersFirst {
+            files = files.filter { $0.isDirectory } + files.filter { !$0.isDirectory }
+        }
+        return files
     }
     
 }

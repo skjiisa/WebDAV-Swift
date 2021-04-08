@@ -61,4 +61,9 @@ extension WebDAV {
         }
     }
     
+    public func clearFilesCache() {
+        clearFilesMemoryCache()
+        clearFilesDiskCache()
+    }
+    
 }
