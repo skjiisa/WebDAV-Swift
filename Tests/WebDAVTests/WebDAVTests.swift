@@ -453,6 +453,8 @@ final class WebDAVTests: XCTestCase {
         
         wait(for: [expectation], timeout: 10.0)
     }
+    
+    //MARK: Static
 
     static var allTests = [
         // WebDAV
@@ -471,6 +473,9 @@ final class WebDAVTests: XCTestCase {
         // Thumbnails
         ("testDownloadThumbnail", testDownloadThumbnail),
         ("testSpecificThumbnailCache", testSpecificThumbnailCache),
-        ("testGeneralThumbnailCache", testGeneralThumbnailCache)
+        ("testGeneralThumbnailCache", testGeneralThumbnailCache),
+        // OCS
+        ("testTheme", testTheme),
+        ("testColorHex", testColorHex)
     ]
 }
