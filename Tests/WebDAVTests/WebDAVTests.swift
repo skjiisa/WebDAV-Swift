@@ -317,6 +317,41 @@ final class WebDAVTests: XCTestCase {
         XCTAssertEqual(expectedFiles, WebDAV.sortedFiles(cachedFiles, foldersFirst: true, includeSelf: false))
     }
     
+    func testFilesCacheDoubleRequest() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        expectation.expectedFulfillmentCount = 2
+        
+        // Force fake files into the memory cache
+        let dummyFiles = [
+            WebDAVFile(path: "test0.txt", id: "0", isDirectory: false, lastModified: Date(), size: 0, etag: "0"),
+            WebDAVFile(path: "test1.txt", id: "1", isDirectory: false, lastModified: Date(), size: 0, etag: "1")
+        ]
+        
+        webDAV.filesCache[AccountPath(account: account, path: "/")] = dummyFiles
+        
+        // The first response should always run on the main thread before the networked response
+        var firstResponse = true
+        
+        // includeSelf because the first item is expected to be self
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: true, includeSelf: true, caching: .requestEvenIfCached) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            
+            if firstResponse {
+                XCTAssertEqual(dummyFiles, files)
+                firstResponse = false
+            } else {
+                XCTAssertNotEqual(dummyFiles, files)
+            }
+            
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
     //MARK: Image Cache
     
     func testDownloadImage() {
@@ -550,6 +585,7 @@ final class WebDAVTests: XCTestCase {
         ("testFilesSaveToMemoryCache", testFilesSaveToMemoryCache),
         ("testFilesReadFromMemoryCache", testFilesReadFromMemoryCache),
         ("testDiskCache", testDiskCache),
+        ("testFilesCacheDoubleRequest", testFilesCacheDoubleRequest),
         // Image Cache
         ("testDownloadImage", testDownloadImage),
         ("testImageCache", testImageCache),
