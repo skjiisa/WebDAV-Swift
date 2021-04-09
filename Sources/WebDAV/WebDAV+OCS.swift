@@ -66,9 +66,12 @@ public extension WebDAV {
     @discardableResult
     func getNextcloudTheme<A: WebDAVAccount>(account: A, password: String, completion: @escaping (_ theme: OCSTheme?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
-              let auth = self.auth(username: unwrappedAccount.username, password: password),
-              let baseURL = nextcloudBaseURL(for: unwrappedAccount.baseURL) else {
+              let auth = self.auth(username: unwrappedAccount.username, password: password) else {
             completion(nil, .invalidCredentials)
+            return nil
+        }
+        guard let baseURL = nextcloudBaseURL(for: unwrappedAccount.baseURL) else {
+            completion(nil, .unsupported)
             return nil
         }
         
