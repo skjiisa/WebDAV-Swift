@@ -7,7 +7,6 @@
 
 import UIKit
 import SWXMLHash
-import Networking
 
 public class WebDAV: NSObject, URLSessionDelegate {
     static let domain = "app.lyons.webdav-swift"
@@ -17,8 +16,6 @@ public class WebDAV: NSObject, URLSessionDelegate {
     /// The formatter used when rendering cache size in `getCacheSize`.
     public var byteCountFormatter = ByteCountFormatter()
     
-    var networkings: [UnwrappedAccount: Networking] = [:]
-    var thumbnailNetworkings: [UnwrappedAccount: Networking] = [:]
     public var filesCache: [AccountPath: [WebDAVFile]] = [:]
     public var dataCache = Cache<AccountPath, Data>()
     public var imageCache = Cache<AccountPath, UIImage>()
@@ -27,6 +24,24 @@ public class WebDAV: NSObject, URLSessionDelegate {
         super.init()
         loadFilesCacheFromDisk()
     }
+    
+    //MARK: Static
+    
+    public static func sortedFiles(_ files: [WebDAVFile], foldersFirst: Bool, includeSelf: Bool) -> [WebDAVFile] {
+        var files = files
+        if !includeSelf, !files.isEmpty {
+            files.removeFirst()
+        }
+        if foldersFirst {
+            files = files.filter { $0.isDirectory } + files.filter { !$0.isDirectory }
+        }
+        return files
+    }
+}
+
+//MARK: Public
+
+public extension WebDAV {
     
     //MARK: WebDAV Requests
     
@@ -46,7 +61,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, foldersFirst: Bool = true, includeSelf: Bool = false, caching options: WebDAVCacheOptions = [], completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    func listFiles<A: WebDAVAccount>(atPath path: String, account: A, password: String, foldersFirst: Bool = true, includeSelf: Bool = false, caching options: WebDAVCachingOptions = [], completion: @escaping (_ files: [WebDAVFile]?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         // Check the cache
         var cachedResponse: [WebDAVFile]?
         let accountPath = AccountPath(account: account, path: path)
@@ -142,7 +157,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
-    public func upload<A: WebDAVAccount>(data: Data, toPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
+    func upload<A: WebDAVAccount>(data: Data, toPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
             completion(.invalidCredentials)
             return nil
@@ -166,7 +181,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
-    public func upload<A: WebDAVAccount>(file: URL, toPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
+    func upload<A: WebDAVAccount>(file: URL, toPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionUploadTask? {
         guard let request = authorizedRequest(path: path, account: account, password: password, method: .put) else {
             completion(.invalidCredentials)
             return nil
@@ -191,7 +206,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func download<A: WebDAVAccount>(fileAtPath path: String, account: A, password: String, caching options: WebDAVCacheOptions = [], completion: @escaping (_ data: Data?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    func download<A: WebDAVAccount>(fileAtPath path: String, account: A, password: String, caching options: WebDAVCachingOptions = [], completion: @escaping (_ data: Data?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         cachingDataTask(cache: dataCache, path: path, account: account, password: password, caching: options, valueFromData: { $0 }, completion: completion)
     }
     
@@ -205,7 +220,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func createFolder<A: WebDAVAccount>(atPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    func createFolder<A: WebDAVAccount>(atPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         basicDataTask(path: path, account: account, password: password, method: .mkcol, completion: completion)
     }
     
@@ -219,7 +234,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func deleteFile<A: WebDAVAccount>(atPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    func deleteFile<A: WebDAVAccount>(atPath path: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         basicDataTask(path: path, account: account, password: password, method: .delete, completion: completion)
     }
     
@@ -234,7 +249,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func moveFile<A: WebDAVAccount>(fromPath path: String, to destination: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    func moveFile<A: WebDAVAccount>(fromPath path: String, to destination: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         basicDataTask(path: path, destination: destination, account: account, password: password, method: .move, completion: completion)
     }
     
@@ -249,100 +264,21 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func copyFile<A: WebDAVAccount>(fromPath path: String, to destination: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    func copyFile<A: WebDAVAccount>(fromPath path: String, to destination: String, account: A, password: String, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         basicDataTask(path: path, destination: destination, account: account, password: password, method: .copy, completion: completion)
     }
     
-    //MARK: Networking Requests
-    // Somewhat confusing header title, but this refers to requests made using the Networking library
-    
-    /// Download and cache an image from the specified file path.
-    /// - Parameters:
-    ///   - path: The path of the image to download.
-    ///   - account: The WebDAV account.
-    ///   - password: The WebDAV account's password.
-    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
-    ///   - image: The image downloaded, if successful.
-    ///   The cached image if it has balready been downloaded.
-    ///   - cachedImageURL: The URL of the cached image.
-    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
-    /// - Returns: The request identifier.
-    @discardableResult
-    public func downloadImage<A: WebDAVAccount>(path: String, account: A, password: String, completion: @escaping (_ image: UIImage?, _ cachedImageURL: URL?, _ error: WebDAVError?) -> Void) -> String? {
-        guard let networking = self.networking(for: account, password: password),
-              let path = networkingPath(path) else {
-            completion(nil, nil, .invalidCredentials)
-            return nil
-        }
-        
-        let id = networking.downloadImage(path) { imageResult in
-            switch imageResult {
-            case .success(let imageResponse):
-                let path = try? networking.destinationURL(for: path)
-                completion(imageResponse.image, path, nil)
-            case .failure(let response):
-                completion(nil, nil, WebDAVError.getError(statusCode: response.statusCode, error: response.error))
-            }
-        }
-        
-        return id
-    }
-    
-    /// Download and cache an image's thumbnail from the specified file path.
-    ///
-    /// Only works with Nextcould or other instances that use Nextcloud's same thumbnail URL structure.
-    /// - Parameters:
-    ///   - path: The path of the image to download the thumbnail of.
-    ///   - account: The WebDAV account.
-    ///   - password: The WebDAV account's password.
-    ///   - dimensions: The dimensions of the thumbnail. A value of `nil` will use the server's default.
-    ///   - aspectFill: Whether the thumbnail should fill the dimensions or fit within it.
-    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
-    ///   - image: The thumbnail downloaded, if successful.
-    ///   The cached thumbnail if it has balready been downloaded.
-    ///   - cachedImageURL: The URL of the cached thumbnail.
-    ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
-    /// - Returns: The request identifier.
-    @discardableResult
-    public func downloadThumbnail<A: WebDAVAccount>(
-        path: String, account: A, password: String, with dimensions: CGSize?, aspectFill: Bool = true,
-        completion: @escaping (_ image: UIImage?, _ cachedImageURL: URL?, _ error: WebDAVError?) -> Void
-    ) -> String? {
-        guard let networking = thumbnailNetworking(for: account, password: password),
-              let path = nextcloudPreviewPath(at: path, with: dimensions, aspectFill: aspectFill) else {
-            completion(nil, nil, .invalidCredentials)
-            return nil
-        }
-        
-        let id = networking.downloadImage(path) { imageResult in
-            switch imageResult {
-            case .success(let imageResponse):
-                let path = try? networking.destinationURL(for: path)
-                completion(imageResponse.image, path, nil)
-            case .failure(let response):
-                completion(nil, nil, WebDAVError.getError(statusCode: response.statusCode, error: response.error))
-            }
-        }
-        
-        return id
-    }
+    //MARK: Cache
     
     /// Deletes the cached data for a certain path.
     /// - Parameters:
     ///   - path: The path used to download the data.
     ///   - account: The WebDAV account used to download the data.
     /// - Throws: An error if the cached object URL couldn’t be created or the file can't be deleted.
-    public func deleteCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
-        // It's OK to leave the password blank here, because it gets set before every call
-        guard let networking = self.networking(for: account, password: ""),
-              let path = networkingPath(path) else { return }
-        
-        let destinationURL = try networking.destinationURL(for: path)
-        if FileManager.default.fileExists(atPath: destinationURL.path) {
-            try FileManager.default.removeItem(atPath: destinationURL.path)
-        }
+    func deleteCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
+        let accountPath = AccountPath(account: account, path: path)
+        dataCache.removeValue(forKey: accountPath)
+        imageCache.removeValue(forKey: accountPath)
     }
     
     /// Get the URL used to store a resource for a certain path.
@@ -352,128 +288,22 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - account: The WebDAV account used to download the data.
     /// - Throws: An error if the URL couldn’t be created.
     /// - Returns: The URL where the resource is stored.
-    public func getCachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> URL? {
-        guard let path = networkingPath(path) else { return nil }
-        return try self.networking(for: account, password: "")?.destinationURL(for: path)
-    }
-    
-    /// Get the image cached for a certain path.
-    /// - Parameters:
-    ///   - path: The path used to download the image.
-    ///   - account: The WebDAV account used to download the image.
-    /// - Returns: The image, if it is in the cache.
-    public func getCachedImage<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> UIImage? {
-        guard let path = networkingPath(path) else { return nil }
-        return self.networking(for: account, password: "")?.imageFromCache(path)
-    }
-    
-    /// Delete a specific cached thumbnail for a certain path and properties.
-    /// - Parameters:
-    ///   - path: The path of the image to delete the thumbnail of.
-    ///   - account: The WebDAV account used to download the data.
-    ///   - dimensions: The dimensions of the thumbnail to delete.
-    ///   - aspectFill: Whether the thumbnail was fetched with aspectFill.
-    /// - Throws: An error if the cached data URL couldn’t be created or the file couldn't be deleted.
-    public func deleteCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with dimensions: CGSize?, aspectFill: Bool) throws {
-        guard let networking = thumbnailNetworking(for: account, password: ""),
-              let path = nextcloudPreviewPath(at: path, with: dimensions, aspectFill: aspectFill) else { return }
-        
-        let destinationURL = try networking.destinationURL(for: path)
-        if FileManager.default.fileExists(atPath: destinationURL.path) {
-            try FileManager.default.removeItem(atPath: destinationURL.path)
-        }
-    }
-    
-    /// Delete all cached thumbnails for a certain path.
-    /// - Parameters:
-    ///   - path: The path of the image to delete the thumbnails of.
-    ///   - account: The WebDAV account used to download the thumbnails.
-    /// - Throws: An error if the cached thumbnail URLs couldn’t be created or the files couldn't be deleted.
-    public func deleteAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
-        try getAllCachedThumbnailURLs(forItemAtPath: path, account: account).forEach { url in
-            try FileManager.default.remove(at: url)
-        }
-    }
-    
-    /// Get the URLs for the cached thumbnails for a certain path.
-    /// - Parameters:
-    ///   - path: The path used to download the thumbnails.
-    ///   - account: The WebDAV account used to download the thumbnails.
-    /// - Throws: An error if the cached thumbail URLs couldn't be created or the caches folder couldn't be accessed.
-    /// - Returns: An array of the URLs of cached thumbnails for the given path.
-    public func getAllCachedThumbnailURLs<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> [URL] {
-        // Getting the path with no dimensions and aspect fit will give the shortest form of the path with no extras added.
-        guard let networking = thumbnailNetworking(for: account, password: ""),
-              let path = nextcloudPreviewPath(at: path, with: nil, aspectFill: false),
-              let networkingCacheURL = networkingCacheURL else { return [] }
-        
-        let destinationURL = try networking.destinationURL(for: path)
-        let name = destinationURL.deletingPathExtension().lastPathComponent
-        
-        return try FileManager.default.contentsOfDirectory(at: networkingCacheURL, includingPropertiesForKeys: [], options: []).filter { url -> Bool in
-            // Any cached thumbnail is going to start with this name.
-            // It might also have dimensions and/or the aspect fill property after.
-            url.lastPathComponent.starts(with: name)
-        }
-    }
-    
-    public func getAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> [UIImage] {
-        // We can't use imageFromCache(path) to get the images from a memory cache
-        // because we can't generate the path for every possible thumbnail. Instead
-        // we'll get the URLs from getAllCachedThumbnailURLs and get the data from those.
-        try getAllCachedThumbnailURLs(forItemAtPath: path, account: account).compactMap { url -> UIImage? in
-            UIImage(data: try Data(contentsOf: url))
-        }
-    }
-    
-    /// Get the URL for the cached thumbnail for a certain path and properties.
-    /// Useful to find where a download thumbnail is located.
-    /// - Parameters:
-    ///   - path: The path used to download the thumbnail.
-    ///   - account: The WebDAV account used to download the thumbnail.
-    ///   - dimensions: The dimensions of the thumbnail to get.
-    ///   - aspectFill: Whether the thumbnail was fetched with aspectFill.
-    /// - Throws: An error if the cached data URL couldn’t be created.
-    /// - Returns: The URL where the thumbnail has been stored.
-    public func getCachedThumbnailURL<A: WebDAVAccount>(forItemAtPath path: String, account: A, with dimensions: CGSize?, aspectFill: Bool) throws -> URL? {
-        guard let path = nextcloudPreviewPath(at: path, with: dimensions, aspectFill: aspectFill) else { return nil }
-        return try thumbnailNetworking(for: account, password: "")?.destinationURL(for: path)
-    }
-    
-    /// Get the thumbnail cached for a certain path and properties.
-    /// - Parameters:
-    ///   - path: The path used to download the thumbnail.
-    ///   - account: The WebDAV account used to download the thumbnail.
-    ///   - dimensions: The dimensions of the thumbnail to get.
-    ///   - aspectFill: Whether the thumbnail was fetched with aspectFill.
-    /// - Returns: The thumbnail, if it is in the cache.
-    public func getCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with dimensions: CGSize?, aspectFill: Bool) -> UIImage? {
-        guard let path = nextcloudPreviewPath(at: path, with: dimensions, aspectFill: aspectFill) else { return nil }
-        return self.thumbnailNetworking(for: account, password: "")?.imageFromCache(path)
+    func getCachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> URL? {
+        //TODO
+        return nil
     }
     
     /// Deletes all downloaded data that has been cached.
     /// - Throws: An error if the resources couldn't be deleted.
-    public func deleteAllCachedData() throws {
-        guard let caches = networkingCacheURL else { return }
-        try FileManager.default.remove(at: caches)
-    }
-    
-    /// Cancel a request.
-    /// - Parameters:
-    ///   - id: The identifier of the request.
-    ///   - account: The WebDAV account the request was made on.
-    public func cancelRequest<A: WebDAVAccount>(id: String, account: A) {
-        guard let unwrappedAccount = UnwrappedAccount(account: account) else { return }
-        networkings[unwrappedAccount]?.cancel(id)
-        thumbnailNetworkings[unwrappedAccount]?.cancel(id)
+    func deleteAllCachedData() throws {
+        //TODO
     }
     
     /// Get the total disk space for the contents of the image cache.
     /// For a formatted string of the size, see `getCacheSize`.
     /// - Returns: The total allocated space of the cache in bytes.
-    public func getCacheByteCount() -> Int {
-        guard let caches = networkingCacheURL,
+    func getCacheByteCount() -> Int {
+        guard let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first,
               let urls = FileManager.default.enumerator(at: caches, includingPropertiesForKeys: nil)?.allObjects as? [URL] else { return 0 }
         
         return urls.lazy.reduce(0) { total, url -> Int in
@@ -486,24 +316,37 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///
     /// This formats the size using this object's `byteCountFormatter` which can be modified.
     /// - Returns: A localized string of the total allocated space of the cache.
-    public func getCacheSize() -> String {
+    func getCacheSize() -> String {
         byteCountFormatter.string(fromByteCount: Int64(getCacheByteCount()))
     }
     
     /// The URL to the directory that contains the cached image data.
-    public var networkingCacheURL: URL? {
+    var networkingCacheURL: URL? {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("com.3lvis.networking")
     }
     
-    //MARK: Cache
+    /// The caching system has changed from WebDAV Swift v2 to v3.
+    /// Run this function if upgrading from v2 to v3 to clear the old cache.
+    /// - Throws: An error if the cache couldn't be deleted.
+    func clearV2Cache() throws {
+        guard let caches = networkingCacheURL,
+              FileManager.default.fileExists(atPath: caches.path) else { return }
+        try FileManager.default.removeItem(at: caches)
+    }
     
-    public func clearFilesMemoryCache() {
+    func clearFilesMemoryCache() {
         filesCache.removeAll()
     }
     
-    //MARK: Internal
+}
+
+//MARK: Internal
+
+extension WebDAV {
     
-    func cachingDataTask<A: WebDAVAccount, Value: Equatable>(cache: Cache<AccountPath, Value>, path: String, account: A, password: String, caching options: WebDAVCacheOptions, valueFromData: @escaping (_ data: Data) -> Value?, completion: @escaping (_ value: Value?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    //MARK: Standard Requests
+    
+    func cachingDataTask<A: WebDAVAccount, Value: Equatable>(cache: Cache<AccountPath, Value>, path: String, account: A, password: String, caching options: WebDAVCachingOptions, valueFromData: @escaping (_ data: Data) -> Value?, completion: @escaping (_ value: Value?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         // Check cache
         var cachedValue: Value?
         let accountPath = AccountPath(account: account, path: path)
@@ -562,7 +405,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - username: The username
     ///   - password: The password
     /// - Returns: A base-64 encoded credential if the provided credentials are valid (can be encoded as UTF-8).
-    internal func auth(username: String, password: String) -> String? {
+    func auth(username: String, password: String) -> String? {
         let authString = username + ":" + password
         let authData = authString.data(using: .utf8)
         return authData?.base64EncodedString()
@@ -575,7 +418,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - password: The WebDAV password
     ///   - method: The HTTP Method for the request.
     /// - Returns: The URL request if the credentials are valid (can be encoded as UTF-8).
-    internal func authorizedRequest<A: WebDAVAccount>(path: String, account: A, password: String, method: HTTPMethod) -> URLRequest? {
+    func authorizedRequest<A: WebDAVAccount>(path: String, account: A, password: String, method: HTTPMethod) -> URLRequest? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
               let auth = self.auth(username: unwrappedAccount.username, password: password) else { return nil }
         
@@ -587,7 +430,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return request
     }
     
-    internal func basicDataTask<A: WebDAVAccount>(path: String, destination: String? = nil, account: A, password: String, method: HTTPMethod, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    func basicDataTask<A: WebDAVAccount>(path: String, destination: String? = nil, account: A, password: String, method: HTTPMethod, completion: @escaping (_ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard var request = authorizedRequest(path: path, account: account, password: password, method: method),
               let unwrappedAccount = UnwrappedAccount(account: account) else {
             completion(.invalidCredentials)
@@ -607,18 +450,9 @@ public class WebDAV: NSObject, URLSessionDelegate {
         return task
     }
     
-    internal func networking<A: WebDAVAccount>(for account: A, password: String) -> Networking? {
-        guard let unwrappedAccount = UnwrappedAccount(account: account) else { return nil }
-        let networking = networkings[unwrappedAccount] ?? {
-            let networking = Networking(baseURL: unwrappedAccount.baseURL.absoluteString)
-            networkings[unwrappedAccount] = networking
-            return networking
-        }()
-        networking.setAuthorizationHeader(username: unwrappedAccount.username, password: password)
-        return networking
-    }
+    //MARK: Pathing
     
-    internal func nextcloudBaseURL(for baseURL: URL) -> URL? {
+    func nextcloudBaseURL(for baseURL: URL) -> URL? {
         guard baseURL.absoluteString.lowercased().contains("remote.php/dav/files/"),
               let index = baseURL.pathComponents.map({ $0.lowercased() }).firstIndex(of: "remote.php") else { return nil }
         
@@ -630,65 +464,6 @@ public class WebDAV: NSObject, URLSessionDelegate {
         
         // Add Nextcloud thumbnail components
         return previewURL
-    }
-    
-    internal func nextcloudPreviewBaseURL(for baseURL: URL) -> URL? {
-        return nextcloudBaseURL(for: baseURL)?
-            .appendingPathComponent("index.php")
-            .appendingPathComponent("core")
-            .appendingPathComponent("preview.png")
-    }
-    
-    internal func thumbnailNetworking<A: WebDAVAccount>(for account: A, password: String) -> Networking? {
-        guard let unwrappedAccount = UnwrappedAccount(account: account),
-              let previewURL = nextcloudPreviewBaseURL(for: unwrappedAccount.baseURL) else { return nil }
-        
-        let networking = thumbnailNetworkings[unwrappedAccount] ?? {
-            let networking = Networking(baseURL: previewURL.absoluteString)
-            thumbnailNetworkings[unwrappedAccount] = networking
-            return networking
-        }()
-        
-        networking.setAuthorizationHeader(username: unwrappedAccount.username, password: password)
-        return networking
-    }
-    
-    internal func networkingPath(_ path: String) -> String? {
-        let slashPath = path.first == "/" ? path : "/" + path
-        return slashPath.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
-    }
-    
-    internal func nextcloudPreviewPath(at path: String, with dimensions: CGSize?, aspectFill: Bool = true) -> String? {
-        guard var encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else { return nil }
-        
-        if encodedPath.hasPrefix("/") {
-            encodedPath.removeFirst()
-        }
-        
-        var thumbnailPath = "?file=\(encodedPath)&mode=cover"
-        
-        if let dimensions = dimensions {
-            thumbnailPath += "&x=\(dimensions.width)&y=\(dimensions.height)"
-        }
-        
-        if aspectFill {
-            thumbnailPath += "&a=1"
-        }
-        
-        return thumbnailPath
-    }
-    
-    //MARK: Static
-    
-    public static func sortedFiles(_ files: [WebDAVFile], foldersFirst: Bool, includeSelf: Bool) -> [WebDAVFile] {
-        var files = files
-        if !includeSelf, !files.isEmpty {
-            files.removeFirst()
-        }
-        if foldersFirst {
-            files = files.filter { $0.isDirectory } + files.filter { !$0.isDirectory }
-        }
-        return files
     }
     
 }
