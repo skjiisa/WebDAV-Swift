@@ -8,6 +8,8 @@
 import Foundation
 import SWXMLHash
 
+//MARK: OCSTheme
+
 /// Theming information from a WebDAV server that supports OCS.
 public struct OCSTheme {
     /// Name of the server.
@@ -48,7 +50,9 @@ public struct OCSTheme {
     }
 }
 
-extension WebDAV {
+//MARK: Public
+
+public extension WebDAV {
     
     /// Get the theme information from a WebDAV server that supports OCS (including Nextcloud).
     /// - Parameters:
@@ -60,7 +64,7 @@ extension WebDAV {
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func getNextcloudTheme<A: WebDAVAccount>(account: A, password: String, completion: @escaping (_ theme: OCSTheme?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    func getNextcloudTheme<A: WebDAVAccount>(account: A, password: String, completion: @escaping (_ theme: OCSTheme?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         guard let unwrappedAccount = UnwrappedAccount(account: account),
               let auth = self.auth(username: unwrappedAccount.username, password: password),
               let baseURL = nextcloudBaseURL(for: unwrappedAccount.baseURL) else {
@@ -102,7 +106,7 @@ extension WebDAV {
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func getNextcloudColorHex<A: WebDAVAccount>(account: A, password: String, completion: @escaping (_ color: String?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    func getNextcloudColorHex<A: WebDAVAccount>(account: A, password: String, completion: @escaping (_ color: String?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         getNextcloudTheme(account: account, password: password) { theme, error in
             completion(theme?.colorHex, error)
         }

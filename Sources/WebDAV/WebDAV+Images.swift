@@ -7,6 +7,28 @@
 
 import UIKit
 
+//MARK: ThumbnailProperties
+
+public struct ThumbnailProperties {
+    /// Thumbnail dimensions. A nil value will use the server's default.
+    public var dimensions: CGSize?
+    /// A flag that indicates whether the thumbnail view fits or fills the image of the given dimensions.
+    public var contentMode: ContentMode
+    
+    /// Configurable default thumbnail properties. Initial value of content fill and server default dimensions.
+    public static var `default` = ThumbnailProperties(contentMode: .fill)
+    /// Content fill with the server's default dimensions.
+    public static let fill = ThumbnailProperties(contentMode: .fill)
+    /// Content fit with the server's default dimensions.
+    public static let fit = ThumbnailProperties(contentMode: .fit)
+    
+    /// Constants that define how the thumbnail fills the dimensions.
+    public enum ContentMode {
+        case fill
+        case fit
+    }
+}
+
 //MARK: Public
 
 public extension WebDAV {
@@ -50,7 +72,7 @@ public extension WebDAV {
     /// - Returns: The request identifier.
     @discardableResult
     func downloadThumbnail<A: WebDAVAccount>(
-        path: String, account: A, password: String, with dimensions: CGSize?, aspectFill: Bool = true,
+        path: String, account: A, password: String, with properties: ThumbnailProperties = .default,
         caching options: WebDAVCachingOptions = [], completion: @escaping (_ image: UIImage?, _ error: WebDAVError?) -> Void
     ) -> URLSessionDataTask? {
         //TODO
