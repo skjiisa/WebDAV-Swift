@@ -20,6 +20,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
     var networkings: [UnwrappedAccount: Networking] = [:]
     var thumbnailNetworkings: [UnwrappedAccount: Networking] = [:]
     public var filesCache: [AccountPath: [WebDAVFile]] = [:]
+    public var dataCache = Cache<AccountPath, Data>()
+    public var imageCache = Cache<AccountPath, UIImage>()
     
     public override init() {
         super.init()
@@ -189,18 +191,8 @@ public class WebDAV: NSObject, URLSessionDelegate {
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
-    public func download<A: WebDAVAccount>(fileAtPath path: String, account: A, password: String, completion: @escaping (_ data: Data?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
-        guard let request = authorizedRequest(path: path, account: account, password: password, method: .get) else {
-            completion(nil, .invalidCredentials)
-            return nil
-        }
-        
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            completion(data, WebDAVError.getError(response: response, error: error))
-        }
-        
-        task.resume()
-        return task
+    public func download<A: WebDAVAccount>(fileAtPath path: String, account: A, password: String, caching options: WebDAVCacheOptions = [], completion: @escaping (_ data: Data?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+        cachingDataTask(cache: dataCache, path: path, account: account, password: password, caching: options, valueFromData: { $0 }, completion: completion)
     }
     
     /// Create a folder at the specified path
@@ -510,6 +502,60 @@ public class WebDAV: NSObject, URLSessionDelegate {
     }
     
     //MARK: Internal
+    
+    func cachingDataTask<A: WebDAVAccount, Value: Equatable>(cache: Cache<AccountPath, Value>, path: String, account: A, password: String, caching options: WebDAVCacheOptions, valueFromData: @escaping (_ data: Data) -> Value?, completion: @escaping (_ value: Value?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+        // Check cache
+        var cachedValue: Value?
+        let accountPath = AccountPath(account: account, path: path)
+        if !options.contains(.doNotReturnCachedResult) {
+            if let value = cache[accountPath] {
+                completion(value, nil)
+                
+                if !options.contains(.requestEvenIfCached) {
+                    return nil
+                } else {
+                    // Remember the cached completion. If the fetched results
+                    // are the same, don't bother completing again.
+                    cachedValue = value
+                }
+            }
+        }
+        
+        // Create network request
+        
+        guard let request = authorizedRequest(path: path, account: account, password: password, method: .get) else {
+            completion(nil, .invalidCredentials)
+            return nil
+        }
+        
+        // Perform network request
+        
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
+            let error = WebDAVError.getError(response: response, error: error)
+            
+            if let data = data, let value = valueFromData(data) {
+                // Cache result
+                //TODO: Cache to disk
+                if options.contains(.removeExistingCache) {
+                    // Remove cached result
+                    cache.removeValue(forKey: accountPath)
+                } else if !options.contains(.doNotCacheResult) {
+                    // Cache the result
+                    cache.set(value, forKey: accountPath)
+                }
+                
+                // Don't send a duplicate completion if the results are the same.
+                if value != cachedValue {
+                    completion(value, error)
+                }
+            } else {
+                completion(nil, error)
+            }
+        }
+        
+        task.resume()
+        return task
+    }
     
     /// Creates a basic authentication credential.
     /// - Parameters:
