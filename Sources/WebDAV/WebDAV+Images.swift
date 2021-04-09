@@ -9,10 +9,9 @@ import UIKit
 
 //MARK: ThumbnailProperties
 
-public struct ThumbnailProperties {
-    /// Thumbnail dimensions. A nil value will use the server's default.
-    public var dimensions: CGSize?
-    /// A flag that indicates whether the thumbnail view fits or fills the image of the given dimensions.
+public struct ThumbnailProperties: Hashable {
+    public var width: Int?
+    public var height: Int?
     public var contentMode: ContentMode
     
     /// Configurable default thumbnail properties. Initial value of content fill and server default dimensions.
@@ -23,9 +22,29 @@ public struct ThumbnailProperties {
     public static let fit = ThumbnailProperties(contentMode: .fit)
     
     /// Constants that define how the thumbnail fills the dimensions.
-    public enum ContentMode {
+    public enum ContentMode: Hashable {
         case fill
         case fit
+    }
+    
+    /// - Parameters:
+    ///   - size: The size of the thumbnail. A nil value will use the server's default dimensions.
+    ///   - contentMode: A flag that indicates whether the thumbnail view fits or fills the dimensions.
+    public init(_ size: (width: Int, height: Int)? = nil, contentMode: ThumbnailProperties.ContentMode) {
+        if let size = size {
+            width = size.width
+            height = size.height
+        }
+        self.contentMode = contentMode
+    }
+    
+    /// - Parameters:
+    ///   - size: The size of the thumbnail. Width and height will be trucated to integer pixel counts.
+    ///   - contentMode: A flag that indicates whether the thumbnail view fits or fills the image of the given dimensions.
+    public init(size: CGSize, contentMode: ThumbnailProperties.ContentMode) {
+        width = Int(size.width)
+        height = Int(size.height)
+        self.contentMode = contentMode
     }
 }
 
