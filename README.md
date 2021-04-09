@@ -87,6 +87,27 @@ webDAV.upload(data: data, toPath: path, account: account, password: password) { 
 }
 ```
 
+### Listing Files
+
+The `listFiles` function, if successful, will complete with a `WebDAVFile` array, which will be cached to memory and disk for quick retrieval later.
+By default, subsequest calls of `listFiles` on the same path with the same account will give the cached results instead of making a network request.
+You can use the `caching options` parameter to change this behavior.
+For example, if you want to force a request instead of accessing the cache, you can use `.doNotReturnCachedResult`.
+
+Another useful option is `.requestEvenIfCached`:
+
+```swift
+webDAV.listFiles(atPath: path, account: account, password: password, caching: .requestEvenIfCached) { files, error in
+    // Handle the cached files immediately.
+    // Handle the newly fetched files list after the request is complete.
+}
+```
+
+In this case, if there are cached files, the completion closure will run immediately with those cached files.
+Then a network request will be made to get an updated files list.
+If the files list from the server is unchaged from the cache, the function ends here and nothing else is called.
+If the files list from the server is different from the cache, the completion closure will run a second time with the new files list.
+
 ### Image cache
 
 Included is functionality for downloading and caching images.
