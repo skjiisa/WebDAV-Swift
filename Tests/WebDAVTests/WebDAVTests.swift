@@ -15,7 +15,7 @@ final class WebDAVTests: XCTestCase {
         
         // List files
         
-        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false) { files, error in
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
             XCTAssertNotNil(files)
             XCTAssertNil(error)
             successExpectation.fulfill()
@@ -23,7 +23,7 @@ final class WebDAVTests: XCTestCase {
         
         // Try to files with incorrect password
         
-        webDAV.listFiles(atPath: "/", account: account, password: UUID().uuidString) { files, error in
+        webDAV.listFiles(atPath: "/", account: account, password: UUID().uuidString, caching: .ignoreCache) { files, error in
             XCTAssertNil(files)
             switch error {
             case .unauthorized:
@@ -46,7 +46,7 @@ final class WebDAVTests: XCTestCase {
         
         // List files
         
-        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: true) { files, error in
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: true, caching: .ignoreCache) { files, error in
             XCTAssertNotNil(files)
             XCTAssertNil(error)
             
@@ -95,7 +95,7 @@ final class WebDAVTests: XCTestCase {
         
         wait(for: [uploadExpectation], timeout: 10.0)
         
-        webDAV.listFiles(atPath: "/", account: account, password: password) { files, error in
+        webDAV.listFiles(atPath: "/", account: account, password: password, caching: .ignoreCache) { files, error in
             guard let file = files?.first(where: { $0.path == path }) else {
                 return XCTFail("Expected file not found \(error?.localizedDescription ?? "")")
             }
@@ -213,9 +213,139 @@ final class WebDAVTests: XCTestCase {
         
         // List files
         
-        webDAV.listFiles(atPath: "/", account: account, password: password) { files, error in
+        webDAV.listFiles(atPath: "/", account: account, password: password, caching: .ignoreCache) { files, error in
             XCTAssertNotNil(files)
             XCTAssertNil(error)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    //MARK: Files Cache
+    
+    func testFilesSaveToMemoryCache() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        // List files
+        
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: true, includeSelf: false, caching: []) { [weak self] files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            
+            guard let cachedFiles = self?.webDAV.filesCache[AccountPath(account: account, path: "/")] else { return XCTFail("Files did not save to cache.") }
+            XCTAssertEqual(WebDAV.sortedFiles(cachedFiles, foldersFirst: true, includeSelf: false), files)
+            
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
+    func testFilesReadFromMemoryCache() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let dummyExpectation = XCTestExpectation(description: "List dummy files from cache")
+        let realExpectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        // Force fake files into the memory cache
+        let dummyFiles = [
+            WebDAVFile(path: "test0.txt", id: "0", isDirectory: false, lastModified: Date(), size: 0, etag: "0"),
+            WebDAVFile(path: "test1.txt", id: "1", isDirectory: false, lastModified: Date(), size: 0, etag: "1")
+        ]
+        
+        webDAV.filesCache[AccountPath(account: account, path: "/")] = dummyFiles
+        
+        // List cached dummy files
+        
+        // includeSelf because the first item is expected to be self
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: true, includeSelf: true, caching: []) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(dummyFiles, files)
+            
+            dummyExpectation.fulfill()
+        }
+        
+        // List real files
+        
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            
+            XCTAssertNotEqual(dummyFiles, files)
+            
+            realExpectation.fulfill()
+        }
+        
+        wait(for: [dummyExpectation, realExpectation], timeout: 10.0)
+    }
+    
+    func testDiskCache() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        // Clear existing caches
+        webDAV.clearFilesCache()
+        
+        var expectedFiles: [WebDAVFile] = []
+        
+        // Fetch files
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: true, includeSelf: false, caching: []) { files, error in
+            XCTAssertNil(error)
+            guard let files = files,
+                  !files.isEmpty else { return XCTFail("No files returned") }
+            expectedFiles = files
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+        
+        // Clear memory cache
+        webDAV.clearFilesMemoryCache()
+        XCTAssert(webDAV.filesCache.isEmpty)
+        
+        // Load disk cache
+        webDAV.loadFilesCacheFromDisk()
+        
+        // Check that memory cache loaded correctly
+        let cachedFiles = webDAV.filesCache[AccountPath(account: account, path: "/")]!
+        XCTAssertEqual(expectedFiles, WebDAV.sortedFiles(cachedFiles, foldersFirst: true, includeSelf: false))
+    }
+    
+    func testFilesCacheDoubleRequest() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        expectation.expectedFulfillmentCount = 2
+        
+        // Force fake files into the memory cache
+        let dummyFiles = [
+            WebDAVFile(path: "test0.txt", id: "0", isDirectory: false, lastModified: Date(), size: 0, etag: "0"),
+            WebDAVFile(path: "test1.txt", id: "1", isDirectory: false, lastModified: Date(), size: 0, etag: "1")
+        ]
+        
+        webDAV.filesCache[AccountPath(account: account, path: "/")] = dummyFiles
+        
+        // The first response should always run on the main thread before the networked response
+        var firstResponse = true
+        
+        // includeSelf because the first item is expected to be self
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: true, includeSelf: true, caching: .requestEvenIfCached) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            
+            if firstResponse {
+                XCTAssertEqual(dummyFiles, files)
+                firstResponse = false
+            } else {
+                XCTAssertNotEqual(dummyFiles, files)
+            }
+            
             expectation.fulfill()
         }
         
@@ -363,7 +493,7 @@ final class WebDAVTests: XCTestCase {
     private func checkFor(fileNamed fileName: String, in folder: String = "/", account: SimpleAccount, password: String, checkNotExist: Bool = false) {
         let expectation = XCTestExpectation(description: "List files before deleting")
         
-        webDAV.listFiles(atPath: folder, account: account, password: password) { files, error in
+        webDAV.listFiles(atPath: folder, account: account, password: password, caching: .ignoreCache) { files, error in
             let foundFile = files?.first(where: { $0.fileName == fileName })
             if checkNotExist {
                 XCTAssertNil(foundFile, "Expected file not found \(error?.localizedDescription ?? "")")
@@ -461,11 +591,18 @@ final class WebDAVTests: XCTestCase {
         ("testListFiles", testListFiles),
         ("testListFilesFoldersFirst", testListFilesFoldersFirst),
         ("testUploadData", testUploadData),
+        //("testUploadFile", testUploadFile),   // Requires iOS 10
         ("testDownloadData", testDownloadData),
         ("testCreateFolder", testCreateFolder),
         ("testDeleteFile", testDeleteFile),
         ("testMoveFile", testMoveFile),
         ("testURLScheme", testURLScheme),
+        ("testCopyFile", testCopyFile),
+        // Files Cache
+        ("testFilesSaveToMemoryCache", testFilesSaveToMemoryCache),
+        ("testFilesReadFromMemoryCache", testFilesReadFromMemoryCache),
+        ("testDiskCache", testDiskCache),
+        ("testFilesCacheDoubleRequest", testFilesCacheDoubleRequest),
         // Image Cache
         ("testDownloadImage", testDownloadImage),
         ("testImageCache", testImageCache),
