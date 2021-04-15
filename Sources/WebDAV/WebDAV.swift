@@ -347,7 +347,9 @@ extension WebDAV {
     //MARK: Standard Requests
     
     func cachingDataTask<A: WebDAVAccount, Value: Equatable>(cache: Cache<AccountPath, Value>, path: String, account: A, password: String, caching options: WebDAVCachingOptions, valueFromData: @escaping (_ data: Data) -> Value?, completion: @escaping (_ value: Value?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+        
         // Check cache
+        
         var cachedValue: Value?
         let accountPath = AccountPath(account: account, path: path)
         if !options.contains(.doNotReturnCachedResult) {
@@ -355,6 +357,9 @@ extension WebDAV {
                 completion(value, nil)
                 
                 if !options.contains(.requestEvenIfCached) {
+                    if options.contains(.removeExistingCache) {
+                        cache.removeValue(forKey: accountPath)
+                    }
                     return nil
                 } else {
                     // Remember the cached completion. If the fetched results
@@ -362,6 +367,10 @@ extension WebDAV {
                     cachedValue = value
                 }
             }
+        }
+        
+        if options.contains(.removeExistingCache) {
+            cache.removeValue(forKey: accountPath)
         }
         
         // Create network request
@@ -376,14 +385,12 @@ extension WebDAV {
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
             let error = WebDAVError.getError(response: response, error: error)
             
-            if let data = data, let value = valueFromData(data) {
+            if let data = data,
+               let value = valueFromData(data) {
                 // Cache result
                 //TODO: Cache to disk
-                if options.contains(.removeExistingCache) {
-                    // Remove cached result
-                    cache.removeValue(forKey: accountPath)
-                } else if !options.contains(.doNotCacheResult) {
-                    // Cache the result
+                if !options.contains(.removeExistingCache),
+                   !options.contains(.doNotCacheResult) {
                     cache.set(value, forKey: accountPath)
                 }
                 
