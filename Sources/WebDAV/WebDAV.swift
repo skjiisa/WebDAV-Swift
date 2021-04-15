@@ -19,6 +19,7 @@ public class WebDAV: NSObject, URLSessionDelegate {
     public var filesCache: [AccountPath: [WebDAVFile]] = [:]
     public var dataCache = Cache<AccountPath, Data>()
     public var imageCache = Cache<AccountPath, UIImage>()
+    public var thumbnailCache = Cache<AccountPath, [ThumbnailProperties: UIImage]>()
     
     public override init() {
         super.init()
@@ -320,7 +321,7 @@ public extension WebDAV {
         byteCountFormatter.string(fromByteCount: Int64(getCacheByteCount()))
     }
     
-    /// The URL to the directory that contains the cached image data.
+    /// The URL to the directory of the depricated Networking image data cache.
     var networkingCacheURL: URL? {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("com.3lvis.networking")
     }

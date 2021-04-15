@@ -10,9 +10,24 @@ import UIKit
 //MARK: ThumbnailProperties
 
 public struct ThumbnailProperties: Hashable {
-    public var width: Int?
-    public var height: Int?
+    private var width: Int?
+    private var height: Int?
+    
     public var contentMode: ContentMode
+    
+    public var size: (width: Int, height: Int)? {
+        get {
+            if let width = width,
+               let height = height {
+                return (width, height)
+            }
+            return nil
+        }
+        set {
+            width = newValue?.width
+            height = newValue?.height
+        }
+    }
     
     /// Configurable default thumbnail properties. Initial value of content fill and server default dimensions.
     public static var `default` = ThumbnailProperties(contentMode: .fill)
@@ -94,8 +109,87 @@ public extension WebDAV {
         path: String, account: A, password: String, with properties: ThumbnailProperties = .default,
         caching options: WebDAVCachingOptions = [], completion: @escaping (_ image: UIImage?, _ error: WebDAVError?) -> Void
     ) -> URLSessionDataTask? {
-        //TODO
-        return nil
+        // This function looks a lot like cachingDataTask and authorizedRequest,
+        // but generalizing both of those to support thumbnails would make them
+        // so much more complicated that it's better to just have similar code here.
+        
+        // Check cache
+        
+        var cachedThumbnail: UIImage?
+        let accountPath = AccountPath(account: account, path: path)
+        if !options.contains(.doNotReturnCachedResult) {
+            if let thumbnail = thumbnailCache[accountPath]?[properties] {
+                completion(thumbnail, nil)
+                
+                if !options.contains(.requestEvenIfCached) {
+                    if options.contains(.removeExistingCache) {
+                        try? deleteCachedThumbnail(forItemAtPath: path, account: account, with: properties)
+                    }
+                    return nil
+                } else {
+                    cachedThumbnail = thumbnail
+                }
+            }
+        }
+        
+        if options.contains(.removeExistingCache) {
+            try? deleteCachedThumbnail(forItemAtPath: path, account: account, with: properties)
+        }
+        
+        // Create Network request
+        
+        guard let unwrappedAccount = UnwrappedAccount(account: account), let auth = self.auth(username: unwrappedAccount.username, password: password) else {
+            completion(nil, .invalidCredentials)
+            return nil
+        }
+        
+        guard let url = nextcloudPreviewURL(for: unwrappedAccount.baseURL, at: path, with: properties) else {
+            completion(nil, .unsupported)
+            return nil
+        }
+        
+        var request = URLRequest(url: url)
+        request.addValue("Basic \(auth)", forHTTPHeaderField: "Authorization")
+        
+        // Perform the network request
+        
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
+            let error = WebDAVError.getError(response: response, error: error)
+            
+            if let data = data,
+               let thumbnail = UIImage(data: data) {
+                // Cache result
+                //TODO: Cache to disk
+                if !options.contains(.removeExistingCache),
+                   !options.contains(.doNotCacheResult) {
+                    var cachedThumbnails = self?.thumbnailCache[accountPath] ?? [:]
+                    cachedThumbnails[properties] = thumbnail
+                }
+                
+                if thumbnail != cachedThumbnail {
+                    completion(thumbnail, error)
+                }
+            } else {
+                completion(nil, error)
+            }
+        }
+        
+        task.resume()
+        return task
+    }
+    
+    //MARK: Thumbnail Cache
+    
+    func deleteCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) throws {
+        let accountPath = AccountPath(account: account, path: path)
+        if var cachedThumbnails = thumbnailCache[accountPath] {
+            cachedThumbnails.removeValue(forKey: properties)
+            if cachedThumbnails.isEmpty {
+                thumbnailCache.removeValue(forKey: accountPath)
+            } else {
+                thumbnailCache[accountPath] = cachedThumbnails
+            }
+        }
     }
     
 }
@@ -113,24 +207,35 @@ extension WebDAV {
             .appendingPathComponent("preview.png")
     }
     
-    func nextcloudPreviewPath(at path: String, with dimensions: CGSize?, aspectFill: Bool = true) -> String? {
-        guard var encodedPath = path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) else { return nil }
+    func nextcloudPreviewQuery(at path: String, properties: ThumbnailProperties) -> [URLQueryItem]? {
+        var path = path
         
-        if encodedPath.hasPrefix("/") {
-            encodedPath.removeFirst()
+        if path.hasPrefix("/") {
+            path.removeFirst()
         }
         
-        var thumbnailPath = "?file=\(encodedPath)&mode=cover"
+        var query = [
+            URLQueryItem(name: "file", value: path),
+            URLQueryItem(name: "mode", value: "cover")
+        ]
         
-        if let dimensions = dimensions {
-            thumbnailPath += "&x=\(dimensions.width)&y=\(dimensions.height)"
+        if let size = properties.size {
+            query.append(URLQueryItem(name: "x", value: "\(size.width)"))
+            query.append(URLQueryItem(name: "y", value: "\(size.height)"))
         }
         
-        if aspectFill {
-            thumbnailPath += "&a=1"
+        if properties.contentMode == .fill {
+            query.append(URLQueryItem(name: "a", value: "1"))
         }
         
-        return thumbnailPath
+        return query
+    }
+    
+    func nextcloudPreviewURL(for baseURL: URL, at path: String, with properties: ThumbnailProperties) -> URL? {
+        guard let thumbnailURL = nextcloudPreviewBaseURL(for: baseURL) else { return nil }
+        var components = URLComponents(string: thumbnailURL.absoluteString)
+        components?.queryItems = nextcloudPreviewQuery(at: path, properties: properties)
+        return components?.url
     }
     
 }
