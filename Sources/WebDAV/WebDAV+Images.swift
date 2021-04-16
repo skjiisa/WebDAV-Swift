@@ -164,6 +164,7 @@ public extension WebDAV {
                    !options.contains(.doNotCacheResult) {
                     var cachedThumbnails = self?.thumbnailCache[accountPath] ?? [:]
                     cachedThumbnails[properties] = thumbnail
+                    self?.thumbnailCache[accountPath] = cachedThumbnails
                 }
                 
                 if thumbnail != cachedThumbnail {
