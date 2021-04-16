@@ -305,7 +305,8 @@ public extension WebDAV {
     /// Deletes all downloaded data that has been cached.
     /// - Throws: An error if the resources couldn't be deleted.
     func deleteAllCachedData() throws {
-        //TODO
+        dataCache.removeAllValues()
+        imageCache.removeAllValues()
     }
     
     /// Get the total disk space for the contents of the image cache.
