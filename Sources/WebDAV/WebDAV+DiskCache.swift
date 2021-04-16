@@ -7,6 +7,27 @@
 
 import Foundation
 
+//MARK: Public
+
+public extension WebDAV {
+    
+    func cachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> URL? {
+        guard let encodedDescription = UnwrappedAccount(account: account)?.encodedDescription,
+              let caches = cacheFolder else { return nil }
+        return caches
+            .appendingPathComponent(encodedDescription)
+            .appendingPathComponent(path.trimmingCharacters(in: AccountPath.slash))
+    }
+    
+    func cachedDataURLIfExists<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> URL? {
+        guard let url = cachedDataURL(forItemAtPath: path, account: account) else { return nil }
+        return FileManager.default.fileExists(atPath: url.path) ? url : nil
+    }
+    
+}
+
+//MARK: Internal
+
 extension WebDAV {
     
     var cacheFolder: URL? {
@@ -24,6 +45,19 @@ extension WebDAV {
         }
         return directory
     }
+    
+    //MARK: Data Cache
+    
+    func loadCachedValueFromDisk<A: WebDAVAccount, Value: Equatable>(cache: Cache<AccountPath, Value>, forItemAtPath path: String, account: A, valueFromData: @escaping (_ data: Data) -> Value?) -> Value? {
+        guard let url = cachedDataURL(forItemAtPath: path, account: account),
+              FileManager.default.fileExists(atPath: url.path),
+              let data = try? Data(contentsOf: url),
+              let value = valueFromData(data) else { return nil }
+        cache[AccountPath(account: account, path: path)] = value
+        return value
+    }
+    
+    //MARK: Files Cache
     
     var filesCacheURL: URL? {
         cacheFolder?.appendingPathComponent("files.plist")
