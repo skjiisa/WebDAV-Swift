@@ -182,13 +182,13 @@ public extension WebDAV {
     //MARK: Image Cache
     
     func getCachedImage<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> UIImage? {
-        getCachedValue(cache: imageCache, forItemAtPath: path, account: account)
+        getCachedValue(cache: imageCache, forItemAtPath: path, account: account, valueFromData: { UIImage(data: $0) })
     }
     
     //MARK: Thumbnail Cache
     
     func getAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> [ThumbnailProperties: UIImage]? {
-        getCachedValue(cache: thumbnailCache, forItemAtPath: path, account: account)
+        getCachedValue(from: thumbnailCache, forItemAtPath: path, account: account)
     }
     
     func getCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) -> UIImage? {
