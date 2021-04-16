@@ -187,6 +187,14 @@ public extension WebDAV {
     
     //MARK: Thumbnail Cache
     
+    func getAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> [ThumbnailProperties: UIImage]? {
+        getCachedValue(cache: thumbnailCache, forItemAtPath: path, account: account)
+    }
+    
+    func getCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) -> UIImage? {
+        getAllCachedThumbnails(forItemAtPath: path, account: account)?[properties]
+    }
+    
     func deleteCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) throws {
         let accountPath = AccountPath(account: account, path: path)
         if var cachedThumbnails = thumbnailCache[accountPath] {
@@ -197,6 +205,11 @@ public extension WebDAV {
                 thumbnailCache[accountPath] = cachedThumbnails
             }
         }
+    }
+    
+    func deleteAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
+        let accountPath = AccountPath(account: account, path: path)
+        thumbnailCache.removeValue(forKey: accountPath)
     }
     
 }
