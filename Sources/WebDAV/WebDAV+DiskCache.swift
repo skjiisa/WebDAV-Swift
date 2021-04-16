@@ -24,6 +24,11 @@ public extension WebDAV {
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
     
+    func deleteCachedDataFromDisk<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
+        guard let url = cachedDataURLIfExists(forItemAtPath: path, account: account) else { return }
+        try FileManager.default.removeItem(at: url)
+    }
+    
 }
 
 //MARK: Internal
