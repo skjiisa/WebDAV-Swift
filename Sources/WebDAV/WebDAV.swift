@@ -302,23 +302,13 @@ public extension WebDAV {
     /// - Parameters:
     ///   - path: The path used to download the data.
     ///   - account: The WebDAV account used to download the data.
-    /// - Throws: An error if the cached object URL couldn’t be created or the file can't be deleted.
+    /// - Throws: An error if the file can't be deleted.
     func deleteCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
         let accountPath = AccountPath(account: account, path: path)
         dataCache.removeValue(forKey: accountPath)
         imageCache.removeValue(forKey: accountPath)
-    }
-    
-    /// Get the URL used to store a resource for a certain path.
-    /// Useful to find where a download image is located.
-    /// - Parameters:
-    ///   - path: The path used to download the data.
-    ///   - account: The WebDAV account used to download the data.
-    /// - Throws: An error if the URL couldn’t be created.
-    /// - Returns: The URL where the resource is stored.
-    func getCachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> URL? {
-        //TODO
-        return nil
+        
+        try deleteCachedDataFromDisk(forItemAtPath: path, account: account)
     }
     
     /// Deletes all downloaded data that has been cached.
@@ -382,12 +372,12 @@ extension WebDAV {
         var cachedValue: Value?
         let accountPath = AccountPath(account: account, path: path)
         if !options.contains(.doNotReturnCachedResult) {
-            if let value = cache[accountPath] {
+            if let value = getCachedValue(cache: cache, forItemAtPath: path, account: account, valueFromData: valueFromData) {
                 completion(value, nil)
                 
                 if !options.contains(.requestEvenIfCached) {
                     if options.contains(.removeExistingCache) {
-                        cache.removeValue(forKey: accountPath)
+                        try? deleteCachedData(forItemAtPath: path, account: account)
                     }
                     return nil
                 } else {
@@ -399,7 +389,7 @@ extension WebDAV {
         }
         
         if options.contains(.removeExistingCache) {
-            cache.removeValue(forKey: accountPath)
+            try? deleteCachedData(forItemAtPath: path, account: account)
         }
         
         // Create network request
