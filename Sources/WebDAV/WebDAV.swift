@@ -271,6 +271,14 @@ public extension WebDAV {
     
     //MARK: Cache
     
+    func getCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> Data? {
+        getCachedValue(cache: dataCache, forItemAtPath: path, account: account)
+    }
+    
+    func getCachedValue<A: WebDAVAccount, Value: Equatable>(cache: Cache<AccountPath, Value>, forItemAtPath path: String, account: A) -> Value? {
+        cache[AccountPath(account: account, path: path)]
+    }
+    
     /// Deletes the cached data for a certain path.
     /// - Parameters:
     ///   - path: The path used to download the data.
