@@ -39,6 +39,22 @@ internal struct UnwrappedAccount: Hashable {
         self.username = username
         self.baseURL = baseURL
     }
+    
+    /// Description of the unwrapped account in the format "username@baseURL".
+    var description: String {
+        "\(username)@\(baseURL.absoluteString)"
+    }
+    
+    /// Description of the unwrapped account in the format "username@baseURL"
+    /// with the baseURL encoded.
+    ///
+    /// Replaces slashes with colons (for easier reading on macOS)
+    /// and other special characters  with their percent encoding.
+    /// - Note: Only the baseURL is encoded. The username and @ symbol are unchanged.
+    var encodedDescription: String? {
+        guard let encodedURL = baseURL.absoluteString.addingPercentEncoding(withAllowedCharacters: .urlHostAllowed) else { return nil }
+        return "\(username)@\(encodedURL.replacingOccurrences(of: "%2F", with: ":"))"
+    }
 }
 
 //MARK: AccountPath
