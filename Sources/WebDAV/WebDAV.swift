@@ -316,6 +316,7 @@ public extension WebDAV {
     func deleteAllCachedData() throws {
         dataCache.removeAllValues()
         imageCache.removeAllValues()
+        try deleteAllDiskCachedData()
     }
     
     /// Get the total disk space for the contents of the image cache.

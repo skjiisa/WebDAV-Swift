@@ -29,6 +29,15 @@ public extension WebDAV {
         try FileManager.default.removeItem(at: url)
     }
     
+    func deleteAllDiskCachedData() throws {
+        guard let url = cacheFolder else { return }
+        let fm = FileManager.default
+        let filesCachePath = filesCacheURL?.path
+        for item in try fm.contentsOfDirectory(atPath: url.path) where item != filesCachePath {
+            try fm.removeItem(atPath: url.appendingPathComponent(item).path)
+        }
+    }
+    
 }
 
 //MARK: Internal
