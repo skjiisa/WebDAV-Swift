@@ -401,16 +401,24 @@ extension WebDAV {
         
         // Perform network request
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            let error = WebDAVError.getError(response: response, error: error)
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
+            var error = WebDAVError.getError(response: response, error: error)
             
-            if let data = data,
+            if let error = error {
+                return completion(nil, error)
+            } else if let data = data,
                let value = valueFromData(data) {
                 // Cache result
-                //TODO: Cache to disk
                 if !options.contains(.removeExistingCache),
                    !options.contains(.doNotCacheResult) {
+                    // Memory cache
                     cache.set(value, forKey: accountPath)
+                    // Disk cache
+                    do {
+                        try self?.saveDataToDiskCache(data, forItemAtPath: path, account: account)
+                    } catch let cachingError {
+                        error = .nsError(cachingError)
+                    }
                 }
                 
                 // Don't send a duplicate completion if the results are the same.
@@ -418,7 +426,7 @@ extension WebDAV {
                     completion(value, error)
                 }
             } else {
-                completion(nil, error)
+                completion(nil, nil)
             }
         }
         

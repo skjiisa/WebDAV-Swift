@@ -62,6 +62,16 @@ extension WebDAV {
         return value
     }
     
+    func saveDataToDiskCache<A: WebDAVAccount>(_ data: Data, forItemAtPath path: String, account: A) throws {
+        guard let url = cachedDataURL(forItemAtPath: path, account: account) else { return }
+        let directory = url.deletingLastPathComponent()
+        
+        if !FileManager.default.fileExists(atPath: directory.path) {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        }
+        try data.write(to: url)
+    }
+    
     //MARK: Files Cache
     
     var filesCacheURL: URL? {
