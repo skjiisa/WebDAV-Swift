@@ -414,6 +414,13 @@ final class WebDAVTests: XCTestCase {
         XCTAssertNoThrow(try webDAV.deleteCachedThumbnail(forItemAtPath: imagePath, account: account, with: .fill))
     }
     
+    func testThumbnailCacheURL() {
+        guard let (account, _) = getAccount() else { return XCTFail() }
+        guard let url = webDAV.cachedThumbnailURL(forItemAtPath: "fakeImage.png", account: account, with: .init((width: 512, height: 512), contentMode: .fill)),
+              let query = url.query else { return XCTFail("Could not get URL") }
+        XCTAssertEqual("\(url.lastPathComponent)?\(query)", "fakeImage.png?mode=cover&x=512&y=512&a=1")
+    }
+    
     func testSpecificThumbnailCache() throws {
         guard let (account, password) = getAccount() else { return XCTFail() }
         guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {

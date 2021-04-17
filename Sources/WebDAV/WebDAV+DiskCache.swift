@@ -11,6 +11,8 @@ import Foundation
 
 public extension WebDAV {
     
+    //MARK: Data
+    
     func cachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> URL? {
         guard let encodedDescription = UnwrappedAccount(account: account)?.encodedDescription,
               let caches = cacheFolder else { return nil }
@@ -36,6 +38,20 @@ public extension WebDAV {
         for item in try fm.contentsOfDirectory(atPath: url.path) where item != filesCachePath {
             try fm.removeItem(atPath: url.appendingPathComponent(item).path)
         }
+    }
+    
+    //MARK: Thumbnails
+    
+    func cachedThumbnailURL<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) -> URL? {
+        guard let imageURL = cachedDataURL(forItemAtPath: path, account: account) else { return nil }
+        
+        var components = URLComponents(string: imageURL.absoluteString)
+        // The first query item is the path, but we're storing the
+        // thumbnail in its path already anyway, so we can remove it.
+        if let query = nextcloudPreviewQuery(at: path, properties: properties)?.dropFirst() {
+            components?.queryItems = Array(query)
+        }
+        return components?.url
     }
     
 }
