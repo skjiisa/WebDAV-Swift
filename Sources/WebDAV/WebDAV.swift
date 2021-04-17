@@ -408,7 +408,7 @@ extension WebDAV {
             if let error = error {
                 return completion(nil, error)
             } else if let data = data,
-               let value = valueFromData(data) {
+                      let value = valueFromData(data) {
                 // Cache result
                 if !options.contains(.removeExistingCache),
                    !options.contains(.doNotCacheResult) {
