@@ -136,6 +136,8 @@ public extension WebDAV {
                 self?.saveFilesCacheToDisk()
             }
             
+            self?.cleanupCache(at: path, account: account, files: Array(files.dropFirst()))
+            
             let sortedFiles = WebDAV.sortedFiles(files, foldersFirst: foldersFirst, includeSelf: includeSelf)
             // Don't send a duplicate completion if the results are the same.
             if sortedFiles != cachedResponse {
@@ -499,6 +501,29 @@ extension WebDAV {
         
         // Add Nextcloud thumbnail components
         return previewURL
+    }
+    
+    //MARK: Cache
+    
+    func cleanupFilesCache<A: WebDAVAccount>(at path: String, account: A, files: [WebDAVFile]) {
+        let directory = path.trimmingCharacters(in: AccountPath.slash)
+        var changed = false
+        // Remove from cache if the the parent directory no longer exists
+        for (key, _) in filesCache
+        where key.path != directory
+            && key.path.starts(with: directory)
+            && !files.contains(where: { key.path.starts(with: $0.path) }) {
+            filesCache.removeValue(forKey: key)
+            changed = true
+        }
+        
+        if changed {
+            saveFilesCacheToDisk()
+        }
+    }
+    
+    func cleanupCache<A: WebDAVAccount>(at path: String, account: A, files: [WebDAVFile]) {
+        cleanupFilesCache(at: path, account: account, files: files)
     }
     
 }

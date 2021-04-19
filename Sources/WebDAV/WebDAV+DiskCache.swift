@@ -73,7 +73,7 @@ public extension WebDAV {
         let directory = url.deletingLastPathComponent()
         guard fm.fileExists(atPath: url.deletingLastPathComponent().path) else { return }
         
-        for item in try fm.contentsOfDirectory(atPath: directory.path) where item != filename && item.contains(filename) {
+        for item in try fm.contentsOfDirectory(atPath: directory.path) where item != filename && item.starts(with: filename) {
             try fm.removeItem(at: directory.appendingPathComponent(item))
         }
     }

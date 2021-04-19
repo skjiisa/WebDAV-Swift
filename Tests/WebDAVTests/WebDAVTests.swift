@@ -351,6 +351,64 @@ final class WebDAVTests: XCTestCase {
         wait(for: [expectation], timeout: 10.0)
     }
     
+    func testCleanupFilesCacheRoot() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        let path = UUID().uuidString
+        let accountPath = AccountPath(account: account, path: path)
+        
+        // Place fake cache
+        
+        webDAV.filesCache[accountPath] = [WebDAVFile(path: path + "/fake.txt", id: "0", isDirectory: true, lastModified: Date(), size: 0, etag: "0")]
+        XCTAssertNotNil(webDAV.filesCache[accountPath])
+        
+        // List files
+        
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+        
+        // Check that the fake cached file was cleaned up
+        
+        XCTAssertNil(webDAV.filesCache[accountPath])
+    }
+    
+    func testCleanupFilesCacheSubdirectory() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        let folder = createFolder(account: account, password: password)
+        let path = folder + UUID().uuidString
+        let accountPath = AccountPath(account: account, path: path)
+        
+        // Place fake cache
+        
+        webDAV.filesCache[accountPath] = [WebDAVFile(path: path + "/fake.txt", id: "0", isDirectory: true, lastModified: Date(), size: 0, etag: "0")]
+        XCTAssertNotNil(webDAV.filesCache[accountPath])
+        
+        // List files
+        
+        webDAV.listFiles(atPath: folder, account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+        
+        // Check that the fake cached file was cleaned up
+        
+        deleteFile(path: folder, account: account, password: password)
+        XCTAssertNil(webDAV.filesCache[accountPath])
+    }
+    
     //MARK: Image Cache
     
     func testDownloadImage() {
@@ -615,6 +673,8 @@ final class WebDAVTests: XCTestCase {
         ("testFilesReadFromMemoryCache", testFilesReadFromMemoryCache),
         ("testDiskCache", testDiskCache),
         ("testFilesCacheDoubleRequest", testFilesCacheDoubleRequest),
+        ("testCleanupFilesCacheRoot", testCleanupFilesCacheRoot),
+        ("testCleanupFilesCacheSubdirectory", testCleanupFilesCacheSubdirectory),
         // Image Cache
         ("testDownloadImage", testDownloadImage),
         ("testImageCache", testImageCache),
