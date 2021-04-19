@@ -116,9 +116,8 @@ public extension WebDAV {
         // Check cache
         
         var cachedThumbnail: UIImage?
-        let accountPath = AccountPath(account: account, path: path)
         if !options.contains(.doNotReturnCachedResult) {
-            if let thumbnail = thumbnailCache[accountPath]?[properties] {
+            if let thumbnail = getCachedThumbnail(forItemAtPath: path, account: account, with: properties) {
                 completion(thumbnail, nil)
                 
                 if !options.contains(.requestEvenIfCached) {
@@ -154,24 +153,30 @@ public extension WebDAV {
         // Perform the network request
         
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
-            let error = WebDAVError.getError(response: response, error: error)
+            var error = WebDAVError.getError(response: response, error: error)
             
-            if let data = data,
-               let thumbnail = UIImage(data: data) {
+            if let error = error {
+                return completion(nil, error)
+            } else if let data = data,
+                      let thumbnail = UIImage(data: data) {
                 // Cache result
-                //TODO: Cache to disk
                 if !options.contains(.removeExistingCache),
                    !options.contains(.doNotCacheResult) {
-                    var cachedThumbnails = self?.thumbnailCache[accountPath] ?? [:]
-                    cachedThumbnails[properties] = thumbnail
-                    self?.thumbnailCache[accountPath] = cachedThumbnails
+                    // Memory cache
+                    self?.saveToMemoryCache(thumbnail: thumbnail, forItemAtPath: path, account: account, with: properties)
+                    // Disk cache
+                    do {
+                        try self?.saveThumbnailToDiskCache(data: data, forItemAtPath: path, account: account, with: properties)
+                    } catch let cachingError {
+                        error = .nsError(cachingError)
+                    }
                 }
                 
                 if thumbnail != cachedThumbnail {
                     completion(thumbnail, error)
                 }
             } else {
-                completion(nil, error)
+                completion(nil, nil)
             }
         }
         
@@ -182,17 +187,18 @@ public extension WebDAV {
     //MARK: Image Cache
     
     func getCachedImage<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> UIImage? {
-        getCachedValue(cache: imageCache, forItemAtPath: path, account: account)
+        getCachedValue(cache: imageCache, forItemAtPath: path, account: account, valueFromData: { UIImage(data: $0) })
     }
     
     //MARK: Thumbnail Cache
     
     func getAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> [ThumbnailProperties: UIImage]? {
-        getCachedValue(cache: thumbnailCache, forItemAtPath: path, account: account)
+        getCachedValue(from: thumbnailCache, forItemAtPath: path, account: account)
     }
     
     func getCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) -> UIImage? {
-        getAllCachedThumbnails(forItemAtPath: path, account: account)?[properties]
+        getAllCachedThumbnails(forItemAtPath: path, account: account)?[properties] ??
+            loadCachedThumbnailFromDisk(forItemAtPath: path, account: account, with: properties)
     }
     
     func deleteCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) throws {
@@ -205,11 +211,14 @@ public extension WebDAV {
                 thumbnailCache[accountPath] = cachedThumbnails
             }
         }
+        
+        try deleteCachedThumbnailFromDisk(forItemAtPath: path, account: account, with: properties)
     }
     
     func deleteAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
         let accountPath = AccountPath(account: account, path: path)
         thumbnailCache.removeValue(forKey: accountPath)
+        try deleteAllCachedThumbnailsFromDisk(forItemAtPath: path, account: account)
     }
     
 }
@@ -256,6 +265,15 @@ extension WebDAV {
         var components = URLComponents(string: thumbnailURL.absoluteString)
         components?.queryItems = nextcloudPreviewQuery(at: path, properties: properties)
         return components?.url
+    }
+    
+    //MARK: Thumbnail Cache
+    
+    func saveToMemoryCache<A: WebDAVAccount>(thumbnail: UIImage, forItemAtPath path: String, account: A, with properties: ThumbnailProperties) {
+        let accountPath = AccountPath(account: account, path: path)
+        var cachedThumbnails = thumbnailCache[accountPath] ?? [:]
+        cachedThumbnails[properties] = thumbnail
+        thumbnailCache[accountPath] = cachedThumbnails
     }
     
 }

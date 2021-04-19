@@ -272,34 +272,43 @@ public extension WebDAV {
     //MARK: Cache
     
     func getCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> Data? {
-        getCachedValue(cache: dataCache, forItemAtPath: path, account: account)
+        getCachedValue(cache: dataCache, forItemAtPath: path, account: account, valueFromData: { $0 })
     }
     
-    func getCachedValue<A: WebDAVAccount, Value: Equatable>(cache: Cache<AccountPath, Value>, forItemAtPath path: String, account: A) -> Value? {
+    /// Get the cached value for a specified path directly from the memory cache.
+    /// - Parameters:
+    ///   - cache: The memory cache the data is stored in.
+    ///   - path: The path used to download the data.
+    ///   - account: The WebDAV account used to download the data.
+    /// - Returns: The cached data if it is available in the given memory cache.
+    func getCachedValue<A: WebDAVAccount, Value: Equatable>(from cache: Cache<AccountPath, Value>, forItemAtPath path: String, account: A) -> Value? {
         cache[AccountPath(account: account, path: path)]
+    }
+    
+    /// Get the cached value for a specified path from the memory cache if available.
+    /// Otherwise load it from disk and save to memory cache.
+    /// - Parameters:
+    ///   - cache: The memory cache for the value.
+    ///   - path: The path used to download the data.
+    ///   - account: The WebDAV account used to download the data.
+    ///   - valueFromData: Convert `Data` to the desired value type.
+    /// - Returns: The cached data if it is available.
+    func getCachedValue<A: WebDAVAccount, Value: Equatable>(cache: Cache<AccountPath, Value>, forItemAtPath path: String, account: A, valueFromData: @escaping (_ data: Data) -> Value?) -> Value? {
+        getCachedValue(from: cache, forItemAtPath: path, account: account) ??
+            loadCachedValueFromDisk(cache: cache, forItemAtPath: path, account: account, valueFromData: valueFromData)
     }
     
     /// Deletes the cached data for a certain path.
     /// - Parameters:
     ///   - path: The path used to download the data.
     ///   - account: The WebDAV account used to download the data.
-    /// - Throws: An error if the cached object URL couldn’t be created or the file can't be deleted.
+    /// - Throws: An error if the file can't be deleted.
     func deleteCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
         let accountPath = AccountPath(account: account, path: path)
         dataCache.removeValue(forKey: accountPath)
         imageCache.removeValue(forKey: accountPath)
-    }
-    
-    /// Get the URL used to store a resource for a certain path.
-    /// Useful to find where a download image is located.
-    /// - Parameters:
-    ///   - path: The path used to download the data.
-    ///   - account: The WebDAV account used to download the data.
-    /// - Throws: An error if the URL couldn’t be created.
-    /// - Returns: The URL where the resource is stored.
-    func getCachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> URL? {
-        //TODO
-        return nil
+        
+        try deleteCachedDataFromDisk(forItemAtPath: path, account: account)
     }
     
     /// Deletes all downloaded data that has been cached.
@@ -307,6 +316,7 @@ public extension WebDAV {
     func deleteAllCachedData() throws {
         dataCache.removeAllValues()
         imageCache.removeAllValues()
+        try deleteAllDiskCachedData()
     }
     
     /// Get the total disk space for the contents of the image cache.
@@ -363,12 +373,12 @@ extension WebDAV {
         var cachedValue: Value?
         let accountPath = AccountPath(account: account, path: path)
         if !options.contains(.doNotReturnCachedResult) {
-            if let value = cache[accountPath] {
+            if let value = getCachedValue(cache: cache, forItemAtPath: path, account: account, valueFromData: valueFromData) {
                 completion(value, nil)
                 
                 if !options.contains(.requestEvenIfCached) {
                     if options.contains(.removeExistingCache) {
-                        cache.removeValue(forKey: accountPath)
+                        try? deleteCachedData(forItemAtPath: path, account: account)
                     }
                     return nil
                 } else {
@@ -380,7 +390,7 @@ extension WebDAV {
         }
         
         if options.contains(.removeExistingCache) {
-            cache.removeValue(forKey: accountPath)
+            try? deleteCachedData(forItemAtPath: path, account: account)
         }
         
         // Create network request
@@ -392,16 +402,24 @@ extension WebDAV {
         
         // Perform network request
         
-        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { data, response, error in
-            let error = WebDAVError.getError(response: response, error: error)
+        let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
+            var error = WebDAVError.getError(response: response, error: error)
             
-            if let data = data,
-               let value = valueFromData(data) {
+            if let error = error {
+                return completion(nil, error)
+            } else if let data = data,
+                      let value = valueFromData(data) {
                 // Cache result
-                //TODO: Cache to disk
                 if !options.contains(.removeExistingCache),
                    !options.contains(.doNotCacheResult) {
+                    // Memory cache
                     cache.set(value, forKey: accountPath)
+                    // Disk cache
+                    do {
+                        try self?.saveDataToDiskCache(data, forItemAtPath: path, account: account)
+                    } catch let cachingError {
+                        error = .nsError(cachingError)
+                    }
                 }
                 
                 // Don't send a duplicate completion if the results are the same.
@@ -409,7 +427,7 @@ extension WebDAV {
                     completion(value, error)
                 }
             } else {
-                completion(nil, error)
+                completion(nil, nil)
             }
         }
         
