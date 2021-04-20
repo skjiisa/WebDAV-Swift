@@ -379,6 +379,8 @@ final class WebDAVTests: XCTestCase {
         XCTAssertNil(webDAV.filesCache[accountPath])
     }
     
+    //MARK: Cache Cleanup
+    
     func testCleanupFilesCacheSubdirectory() {
         guard let (account, password) = getAccount() else { return XCTFail() }
         
@@ -407,6 +409,63 @@ final class WebDAVTests: XCTestCase {
         
         deleteFile(path: folder, account: account, password: password)
         XCTAssertNil(webDAV.filesCache[accountPath])
+    }
+    
+    func testCleanupDiskCacheFile() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        // Add dummy file to disk cache
+        
+        let name = UUID().uuidString
+        let path = name + ".txt"
+        let data = UUID().uuidString.data(using: .utf8)!
+        let tempFileURL = webDAV.cachedDataURL(forItemAtPath: path, account: account)!
+        XCTAssertNoThrow(try webDAV.saveDataToDiskCache(data, url: tempFileURL))
+        
+        XCTAssert(FileManager.default.fileExists(atPath: tempFileURL.path))
+        
+        // List files
+        
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+        
+        // Check that the fake cached file was cleaned up
+        
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tempFileURL.path))
+    }
+    
+    func testCleanupDiskCacheFolder() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        // Add dummy folder to disk cache
+        
+        let path = UUID().uuidString
+        let tempFileURL = webDAV.cachedDataURL(forItemAtPath: path, account: account)!
+        XCTAssertNoThrow(try FileManager.default.createDirectory(at: tempFileURL, withIntermediateDirectories: true))
+        XCTAssert(FileManager.default.fileExists(atPath: tempFileURL.path))
+        
+        // List files
+        
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+        
+        // Check that the fake cached folder was cleaned up
+        
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tempFileURL.path))
     }
     
     //MARK: Image Cache
