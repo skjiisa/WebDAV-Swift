@@ -105,6 +105,7 @@ public extension WebDAV {
         request.httpBody = body.data(using: .utf8)
         
         let task = URLSession(configuration: .ephemeral, delegate: self, delegateQueue: nil).dataTask(with: request) { [weak self] data, response, error in
+            var error = WebDAVError.getError(response: response, error: error)
             
             // Check the response
             let response = response as? HTTPURLResponse
@@ -112,8 +113,7 @@ public extension WebDAV {
             guard 200...299 ~= response?.statusCode ?? 0,
                   let data = data,
                   let string = String(data: data, encoding: .utf8) else {
-                let webDAVError = WebDAVError.getError(statusCode: response?.statusCode, error: error)
-                return completion(nil, webDAVError)
+                return completion(nil, error)
             }
             
             // Create WebDAVFiles from the XML response
@@ -136,10 +136,16 @@ public extension WebDAV {
                 self?.saveFilesCacheToDisk()
             }
             
+            do {
+                try self?.cleanupCache(at: path, account: account, files: Array(files.dropFirst()))
+            } catch let cachingError {
+                error = .nsError(cachingError)
+            }
+            
             let sortedFiles = WebDAV.sortedFiles(files, foldersFirst: foldersFirst, includeSelf: includeSelf)
             // Don't send a duplicate completion if the results are the same.
             if sortedFiles != cachedResponse {
-                completion(sortedFiles, nil)
+                completion(sortedFiles, error)
             }
         }
         
@@ -499,6 +505,30 @@ extension WebDAV {
         
         // Add Nextcloud thumbnail components
         return previewURL
+    }
+    
+    //MARK: Cache
+    
+    func cleanupFilesCache<A: WebDAVAccount>(at path: String, account: A, files: [WebDAVFile]) {
+        let directory = path.trimmingCharacters(in: AccountPath.slash)
+        var changed = false
+        // Remove from cache if the the parent directory no longer exists
+        for (key, _) in filesCache
+        where key.path != directory
+            && key.path.starts(with: directory)
+            && !files.contains(where: { key.path.starts(with: $0.path) }) {
+            filesCache.removeValue(forKey: key)
+            changed = true
+        }
+        
+        if changed {
+            saveFilesCacheToDisk()
+        }
+    }
+    
+    func cleanupCache<A: WebDAVAccount>(at path: String, account: A, files: [WebDAVFile]) throws {
+        cleanupFilesCache(at: path, account: account, files: files)
+        try cleanupDiskCache(at: path, account: account, files: files)
     }
     
 }

@@ -71,9 +71,9 @@ public extension WebDAV {
         
         let filename = url.lastPathComponent
         let directory = url.deletingLastPathComponent()
-        guard fm.fileExists(atPath: url.deletingLastPathComponent().path) else { return }
+        guard fm.fileExists(atPath: directory.path) else { return }
         
-        for item in try fm.contentsOfDirectory(atPath: directory.path) where item != filename && item.contains(filename) {
+        for item in try fm.contentsOfDirectory(atPath: directory.path) where item != filename && item.starts(with: filename) {
             try fm.removeItem(at: directory.appendingPathComponent(item))
         }
     }
@@ -123,6 +123,20 @@ extension WebDAV {
     func saveDataToDiskCache<A: WebDAVAccount>(_ data: Data, forItemAtPath path: String, account: A) throws {
         guard let url = cachedDataURL(forItemAtPath: path, account: account) else { return }
         try saveDataToDiskCache(data, url: url)
+    }
+    
+    func cleanupDiskCache<A: WebDAVAccount>(at path: String, account: A, files: [WebDAVFile]) throws {
+        let fm = FileManager.default
+        guard let url = cachedDataURL(forItemAtPath: path, account: account),fm.fileExists(atPath: url.path) else { return }
+        
+        let goodFilePaths = Set(files.compactMap { cachedDataURL(forItemAtPath: $0.path, account: account)?.path })
+        
+        let infoPlist = filesCacheURL?.path
+        for path in try fm.contentsOfDirectory(atPath: url.path).map({ url.appendingPathComponent($0).path })
+        where !goodFilePaths.contains(path)
+            && path != infoPlist {
+            try fm.removeItem(atPath: path)
+        }
     }
     
     //MARK: Thumbnail Cache
