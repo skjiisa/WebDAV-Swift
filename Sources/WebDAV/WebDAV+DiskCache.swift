@@ -128,13 +128,14 @@ extension WebDAV {
     func cleanupDiskCache<A: WebDAVAccount>(at path: String, account: A, files: [WebDAVFile]) throws {
         let fm = FileManager.default
         guard let url = cachedDataURL(forItemAtPath: path, account: account),fm.fileExists(atPath: url.path) else { return }
-//        let directory = url.deletingLastPathComponent()
         
         let goodFilePaths = Set(files.compactMap { cachedDataURL(forItemAtPath: $0.path, account: account)?.path })
         
         let infoPlist = filesCacheURL?.path
-        for item in try fm.contentsOfDirectory(atPath: url.path) where !goodFilePaths.contains(item) && item != infoPlist {
-            try fm.removeItem(at: url.appendingPathComponent(item))
+        for path in try fm.contentsOfDirectory(atPath: url.path).map({ url.appendingPathComponent($0).path })
+        where !goodFilePaths.contains(path)
+            && path != infoPlist {
+            try fm.removeItem(atPath: path)
         }
     }
     

@@ -351,6 +351,8 @@ final class WebDAVTests: XCTestCase {
         wait(for: [expectation], timeout: 10.0)
     }
     
+    //MARK: Files Cache Cleanup
+    
     func testCleanupFilesCacheRoot() {
         guard let (account, password) = getAccount() else { return XCTFail() }
         
@@ -378,8 +380,6 @@ final class WebDAVTests: XCTestCase {
         
         XCTAssertNil(webDAV.filesCache[accountPath])
     }
-    
-    //MARK: Cache Cleanup
     
     func testCleanupFilesCacheSubdirectory() {
         guard let (account, password) = getAccount() else { return XCTFail() }
@@ -411,6 +411,8 @@ final class WebDAVTests: XCTestCase {
         XCTAssertNil(webDAV.filesCache[accountPath])
     }
     
+    //MARK: Disk Cache Cleanup
+    
     func testCleanupDiskCacheFile() {
         guard let (account, password) = getAccount() else { return XCTFail() }
         
@@ -418,8 +420,7 @@ final class WebDAVTests: XCTestCase {
         
         // Add dummy file to disk cache
         
-        let name = UUID().uuidString
-        let path = name + ".txt"
+        let path = UUID().uuidString + ".txt"
         let data = UUID().uuidString.data(using: .utf8)!
         let tempFileURL = webDAV.cachedDataURL(forItemAtPath: path, account: account)!
         XCTAssertNoThrow(try webDAV.saveDataToDiskCache(data, url: tempFileURL))
@@ -466,6 +467,48 @@ final class WebDAVTests: XCTestCase {
         // Check that the fake cached folder was cleaned up
         
         XCTAssertFalse(FileManager.default.fileExists(atPath: tempFileURL.path))
+    }
+    
+    func testCleanupDiskCacheWithGoodFile() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
+            return XCTFail("You need to set the image_path in the environment.")
+        }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        // Download image
+        
+        let cachedImageURL = webDAV.cachedDataURL(forItemAtPath: imagePath, account: account)!
+        downloadImage(imagePath: imagePath, account: account, password: password)
+        XCTAssert(FileManager.default.fileExists(atPath: cachedImageURL.path))
+        
+        // Add dummy file to same directory as image in disk cache
+        
+        let imageURL = URL(fileURLWithPath: imagePath, isDirectory: false)
+        let directory = imageURL.deletingLastPathComponent()
+        let url = directory.appendingPathComponent(UUID().uuidString)
+        let data = UUID().uuidString.data(using: .utf8)!
+        let tempFileURL = webDAV.cachedDataURL(forItemAtPath: url.path, account: account)!
+        XCTAssertNoThrow(try webDAV.saveDataToDiskCache(data, url: tempFileURL))
+        
+        XCTAssert(FileManager.default.fileExists(atPath: tempFileURL.path))
+        
+        // List files
+        
+        webDAV.listFiles(atPath: directory.path, account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
+            XCTAssertNotNil(files)
+            XCTAssertNil(error)
+            expectation.fulfill()
+        }
+
+        wait(for: [expectation], timeout: 10.0)
+        
+        // Check that the fake cached file was cleaned up and the valid cached file still exists
+        
+        XCTAssert(FileManager.default.fileExists(atPath: cachedImageURL.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: tempFileURL.path))
+        XCTAssertNoThrow(try webDAV.deleteCachedData(forItemAtPath: imagePath, account: account))
     }
     
     //MARK: Image Cache
@@ -732,8 +775,13 @@ final class WebDAVTests: XCTestCase {
         ("testFilesReadFromMemoryCache", testFilesReadFromMemoryCache),
         ("testDiskCache", testDiskCache),
         ("testFilesCacheDoubleRequest", testFilesCacheDoubleRequest),
+        // Files Cache Cleanup
         ("testCleanupFilesCacheRoot", testCleanupFilesCacheRoot),
         ("testCleanupFilesCacheSubdirectory", testCleanupFilesCacheSubdirectory),
+        // Disk Cache Cleanup
+        ("testCleanupDiskCacheFile", testCleanupDiskCacheFile),
+        ("testCleanupDiskCacheFolder", testCleanupDiskCacheFolder),
+        ("testCleanupDiskCacheWithGoodFile", testCleanupDiskCacheWithGoodFile),
         // Image Cache
         ("testDownloadImage", testDownloadImage),
         ("testImageCache", testImageCache),
