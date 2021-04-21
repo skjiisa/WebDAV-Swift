@@ -56,6 +56,7 @@ public extension WebDAV {
     ///   - includeSelf: Whether or not the folder itself at the path should be included as a file in the list.
     ///   If so, the folder's WebDAVFile will be the first in the list.
     ///   Defaults to `false`.
+    ///   - options: Options for caching the results. Empty set uses default caching behavior.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
     ///   Otherwise, it runs when the nextwork call finishes on a background thread.
     ///   - files: The files at the directory specified. `nil` if there was an error.
@@ -207,6 +208,7 @@ public extension WebDAV {
     ///   - path: The path of the file to download.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
+    ///   - options: Options for caching the results. Empty set uses default caching behavior.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
     ///   Otherwise, it runs when the nextwork call finishes on a background thread.
     ///   - data: The data of the file downloaded, if successful.
@@ -277,6 +279,13 @@ public extension WebDAV {
     
     //MARK: Cache
     
+    /// Get the cached data for a specified path from the memory cache if available.
+    /// Otherwise load it from disk and save to memory cache.
+    /// - Parameters:
+    ///   - cache: The memory cache for the data.
+    ///   - path: The path used to download the data.
+    ///   - account: The WebDAV account used to download the data.
+    /// - Returns: The cached data if it is available.
     func getCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> Data? {
         getCachedValue(cache: dataCache, forItemAtPath: path, account: account, valueFromData: { $0 })
     }
@@ -291,14 +300,14 @@ public extension WebDAV {
         cache[AccountPath(account: account, path: path)]
     }
     
-    /// Get the cached value for a specified path from the memory cache if available.
+    /// Generic function to get the cached value for a specified path from the memory cache if available.
     /// Otherwise load it from disk and save to memory cache.
     /// - Parameters:
     ///   - cache: The memory cache for the value.
     ///   - path: The path used to download the data.
     ///   - account: The WebDAV account used to download the data.
     ///   - valueFromData: Convert `Data` to the desired value type.
-    /// - Returns: The cached data if it is available.
+    /// - Returns: The cached value if it is available.
     func getCachedValue<A: WebDAVAccount, Value: Equatable>(cache: Cache<AccountPath, Value>, forItemAtPath path: String, account: A, valueFromData: @escaping (_ data: Data) -> Value?) -> Value? {
         getCachedValue(from: cache, forItemAtPath: path, account: account) ??
             loadCachedValueFromDisk(cache: cache, forItemAtPath: path, account: account, valueFromData: valueFromData)
