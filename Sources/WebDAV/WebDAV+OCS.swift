@@ -59,7 +59,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - theme: The theme information for the server.
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
@@ -104,7 +104,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - color: The theme color for the server as a hex color starting with #.
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.

@@ -54,7 +54,7 @@ public struct ThumbnailProperties: Hashable {
     }
     
     /// - Parameters:
-    ///   - size: The size of the thumbnail. Width and height will be trucated to integer pixel counts.
+    ///   - size: The size of the thumbnail. Width and height will be truncated to integer pixel counts.
     ///   - contentMode: A flag that indicates whether the thumbnail view fits or fills the image of the given dimensions.
     public init(size: CGSize, contentMode: ThumbnailProperties.ContentMode) {
         width = Int(size.width)
@@ -75,9 +75,9 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - image: The image downloaded, if successful.
-    ///   The cached image if it has balready been downloaded.
+    ///   The cached image if it has already been downloaded.
     ///   - cachedImageURL: The URL of the cached image.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The request identifier.
@@ -90,7 +90,7 @@ public extension WebDAV {
     
     /// Download and cache an image's thumbnail from the specified file path.
     ///
-    /// Only works with Nextcould or other instances that use Nextcloud's same thumbnail URL structure.
+    /// Only works with Nextcloud or other instances that use Nextcloud's same thumbnail URL structure.
     /// - Parameters:
     ///   - path: The path of the image to download the thumbnail of.
     ///   - account: The WebDAV account.
@@ -98,9 +98,9 @@ public extension WebDAV {
     ///   - dimensions: The dimensions of the thumbnail. A value of `nil` will use the server's default.
     ///   - aspectFill: Whether the thumbnail should fill the dimensions or fit within it.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - image: The thumbnail downloaded, if successful.
-    ///   The cached thumbnail if it has balready been downloaded.
+    ///   The cached thumbnail if it has already been downloaded.
     ///   - cachedImageURL: The URL of the cached thumbnail.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The request identifier.

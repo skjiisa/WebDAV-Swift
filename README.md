@@ -58,7 +58,7 @@ Use [URLCredentialStorage](https://developer.apple.com/documentation/foundation/
 
 The path passed into functions should be the path to the file or directory relative to the `baseURL` in your account.
 
-For fuctions that read from or write to a file, this path should include the file name and extension.
+For functions that read from or write to a file, this path should include the file name and extension.
 
 #### Functions
 
@@ -90,7 +90,7 @@ webDAV.upload(data: data, toPath: path, account: account, password: password) { 
 ### Listing Files
 
 The `listFiles` function, if successful, will complete with a `WebDAVFile` array, which will be cached to memory and disk for quick retrieval later.
-By default, subsequest calls of `listFiles` on the same path with the same account will give the cached results instead of making a network request.
+By default, subsequent calls of `listFiles` on the same path with the same account will give the cached results instead of making a network request.
 You can use the `caching options` parameter to change this behavior.
 For example, if you want to force a request instead of accessing the cache, you can use `.doNotReturnCachedResult`.
 
@@ -105,7 +105,7 @@ webDAV.listFiles(atPath: path, account: account, password: password, caching: .r
 
 In this case, if there are cached files, the completion closure will run immediately with those cached files.
 Then a network request will be made to get an updated files list.
-If the files list from the server is unchaged from the cache, the function ends here and nothing else is called.
+If the files list from the server is unchanged from the cache, the function ends here and nothing else is called.
 If the files list from the server is different from the cache, the completion closure will run a second time with the new files list.
 
 ### Image cache

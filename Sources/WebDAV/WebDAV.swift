@@ -58,7 +58,7 @@ public extension WebDAV {
     ///   Defaults to `false`.
     ///   - options: Options for caching the results. Empty set uses default caching behavior.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - files: The files at the directory specified. `nil` if there was an error.
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
@@ -161,7 +161,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
@@ -185,7 +185,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
@@ -210,7 +210,7 @@ public extension WebDAV {
     ///   - password: The WebDAV account's password.
     ///   - options: Options for caching the results. Empty set uses default caching behavior.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - data: The data of the file downloaded, if successful.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
@@ -225,7 +225,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
@@ -239,7 +239,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
@@ -254,7 +254,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
@@ -269,7 +269,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult

@@ -45,7 +45,7 @@ public extension WebDAV {
     func cachedThumbnailURL<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) -> URL? {
         guard let imageURL = cachedDataURL(forItemAtPath: path, account: account) else { return nil }
         
-        // If the query is stored in the URL as an actualy query, it won't be included when
+        // If the query is stored in the URL as an actual query, it won't be included when
         // saving to a file, so we have to manually add the query to the filename here.
         let directory = imageURL.deletingLastPathComponent()
         var filename = imageURL.lastPathComponent
