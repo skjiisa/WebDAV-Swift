@@ -312,9 +312,9 @@ public extension WebDAV {
             loadCachedValueFromDisk(cache: cache, forItemAtPath: path, account: account, valueFromData: valueFromData)
     }
     
-    /// Deletes the cached data for the item at the specified path.
+    /// Deletes the cached data or image for the item at the specified path.
     ///
-    /// Deletes cached data from both memory and disk caches.
+    /// Deletes cached data from both memory and disk caches. Deletes cached data from both `dataCache` and `imageCache`.
     /// - Parameters:
     ///   - path: The path used to download the data.
     ///   - account: The WebDAV account used to download the data.
