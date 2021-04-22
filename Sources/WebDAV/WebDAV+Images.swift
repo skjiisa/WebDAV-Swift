@@ -221,6 +221,8 @@ public extension WebDAV {
     }
     
     /// Delete the cached thumbnail of the image at the specified path with the specified properties.
+    ///
+    /// Deletes cached data from both memory and disk caches.
     /// - Parameters:
     ///   - path: The path used to download the thumbnail.
     ///   - account: The WebDAV account used to download the thumbnail.
@@ -241,6 +243,8 @@ public extension WebDAV {
     }
     
     /// Delete the cached thumbnails of the image at the specified path.
+    ///
+    /// Deletes cached data from both memory and disk caches.
     /// - Parameters:
     ///   - path: The path used to download the thumbnails.
     ///   - account: The WebDAV account used to download the thumbnails.

@@ -279,7 +279,7 @@ public extension WebDAV {
     
     //MARK: Cache
     
-    /// Get the cached data for a specified path from the memory cache if available.
+    /// Get the cached data for the item at the specified path from the memory cache if available.
     /// Otherwise load it from disk and save to memory cache.
     /// - Parameters:
     ///   - path: The path used to download the data.
@@ -289,7 +289,7 @@ public extension WebDAV {
         getCachedValue(cache: dataCache, forItemAtPath: path, account: account, valueFromData: { $0 })
     }
     
-    /// Get the cached value for a specified path directly from the memory cache.
+    /// Get the cached value for the item at the specified path directly from the memory cache.
     /// - Parameters:
     ///   - cache: The memory cache the data is stored in.
     ///   - path: The path used to download the data.
@@ -299,7 +299,7 @@ public extension WebDAV {
         cache[AccountPath(account: account, path: path)]
     }
     
-    /// Generic function to get the cached value for a specified path from the memory cache if available.
+    /// Generic function to get the cached value for the item at the specified path from the memory cache if available.
     /// Otherwise load it from disk and save to memory cache.
     /// - Parameters:
     ///   - cache: The memory cache for the value.
@@ -312,7 +312,9 @@ public extension WebDAV {
             loadCachedValueFromDisk(cache: cache, forItemAtPath: path, account: account, valueFromData: valueFromData)
     }
     
-    /// Deletes the cached data for a certain path.
+    /// Deletes the cached data for the item at the specified path.
+    ///
+    /// Deletes cached data from both memory and disk caches.
     /// - Parameters:
     ///   - path: The path used to download the data.
     ///   - account: The WebDAV account used to download the data.
@@ -326,6 +328,8 @@ public extension WebDAV {
     }
     
     /// Deletes all downloaded data that has been cached.
+    ///
+    /// Does not clear the files cache.
     /// - Throws: An error if the resources couldn't be deleted.
     func deleteAllCachedData() throws {
         dataCache.removeAllValues()
