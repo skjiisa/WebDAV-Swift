@@ -2,6 +2,19 @@
 
 WebDAV communication library for Swift
 
+## Table of contents
+
++ [Install](#install)
++ [Usage](#usage)
+  + [Account](#account)
+  + [Making requests](#making-requests)
+  + [Listing Files](#listing-files)
+  + [Data cache](#data-cache)
+  + [Theming](#theming)
++ [Upgrading](#upgrading)
++ [Contribution](#contribution)
+  + [Adding a WebDAV account](#adding-a-webdav-account)
+
 ## Install
 
 Install using Swift Package Manager.
