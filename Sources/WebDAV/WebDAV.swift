@@ -282,7 +282,6 @@ public extension WebDAV {
     /// Get the cached data for a specified path from the memory cache if available.
     /// Otherwise load it from disk and save to memory cache.
     /// - Parameters:
-    ///   - cache: The memory cache for the data.
     ///   - path: The path used to download the data.
     ///   - account: The WebDAV account used to download the data.
     /// - Returns: The cached data if it is available.

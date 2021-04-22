@@ -74,6 +74,7 @@ public extension WebDAV {
     ///   - path: The path of the image to download.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
+    ///   - options: Options for caching the results. Empty set uses default caching behavior.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
     ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - image: The image downloaded, if successful.
@@ -88,15 +89,16 @@ public extension WebDAV {
     
     //MARK: Thumbnails
     
-    /// Download and cache an image's thumbnail from the specified file path.
+    /// Download and cache an image's thumbnail from the specified path.
     ///
     /// Only works with Nextcloud or other instances that use Nextcloud's same thumbnail URL structure.
     /// - Parameters:
     ///   - path: The path of the image to download the thumbnail of.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
-    ///   - dimensions: The dimensions of the thumbnail. A value of `nil` will use the server's default.
-    ///   - aspectFill: Whether the thumbnail should fill the dimensions or fit within it.
+    ///   - properties: The properties for how the server should render the thumbnail.
+    ///   Default behavior determined by `ThumbnailProperties`'s `default` property.
+    ///   - options: Options for caching the results. Empty set uses default caching behavior.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
     ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - image: The thumbnail downloaded, if successful.
@@ -186,21 +188,44 @@ public extension WebDAV {
     
     //MARK: Image Cache
     
+    /// Get the cached image for a specified path from the memory cache if available.
+    /// Otherwise load it from disk and save to memory cache.
+    /// - Parameters:
+    ///   - path: The path used to download the image.
+    ///   - account: The WebDAV account used to download the image.
+    /// - Returns: The cached image if it is available.
     func getCachedImage<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> UIImage? {
         getCachedValue(cache: imageCache, forItemAtPath: path, account: account, valueFromData: { UIImage(data: $0) })
     }
     
     //MARK: Thumbnail Cache
     
+    /// Get the cached thumbnails of the image at the specified path.
+    /// - Parameters:
+    ///   - path: The path used to download the thumbnails.
+    ///   - account: The WebDAV account used to download the thumbnails.
+    /// - Returns: A dictionary of thumbnails with their properties as keys.
     func getAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> [ThumbnailProperties: UIImage]? {
         getCachedValue(from: thumbnailCache, forItemAtPath: path, account: account)
     }
     
+    /// Get the cached thumbnail of the image at the specified path with the specified properties, if available.
+    /// - Parameters:
+    ///   - path: The path used to download the thumbnail.
+    ///   - account: The WebDAV account used to download the thumbnail.
+    ///   - properties: The properties of the thumbnail.
+    /// - Returns: The thumbnail if it is available.
     func getCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) -> UIImage? {
         getAllCachedThumbnails(forItemAtPath: path, account: account)?[properties] ??
             loadCachedThumbnailFromDisk(forItemAtPath: path, account: account, with: properties)
     }
     
+    /// Delete the cached thumbnail of the image at the specified path with the specified properties.
+    /// - Parameters:
+    ///   - path: The path used to download the thumbnail.
+    ///   - account: The WebDAV account used to download the thumbnail.
+    ///   - properties: The properties of the thumbnail.
+    /// - Throws: An error if the file couldn't be deleted.
     func deleteCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) throws {
         let accountPath = AccountPath(account: account, path: path)
         if var cachedThumbnails = thumbnailCache[accountPath] {
@@ -215,6 +240,11 @@ public extension WebDAV {
         try deleteCachedThumbnailFromDisk(forItemAtPath: path, account: account, with: properties)
     }
     
+    /// Delete the cached thumbnails of the image at the specified path.
+    /// - Parameters:
+    ///   - path: The path used to download the thumbnails.
+    ///   - account: The WebDAV account used to download the thumbnails.
+    /// - Throws: An error if the files couldn't be deleted.
     func deleteAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
         let accountPath = AccountPath(account: account, path: path)
         thumbnailCache.removeValue(forKey: accountPath)
