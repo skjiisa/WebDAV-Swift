@@ -13,6 +13,13 @@ public extension WebDAV {
     
     //MARK: Data
     
+    /// Get the local cached data URL for the item at the specified path.
+    ///
+    /// Gives the URL the data would be cached at wether or not there is any data cached there.
+    /// - Parameters:
+    ///   - path: The path that would be used to download the data.
+    ///   - account: The WebDAV account that would be used to download the data.
+    /// - Returns: The URL where the data is or would be cached.
     func cachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> URL? {
         guard let encodedDescription = UnwrappedAccount(account: account)?.encodedDescription,
               let caches = cacheFolder else { return nil }
@@ -21,16 +28,28 @@ public extension WebDAV {
             .appendingPathComponent(path.trimmingCharacters(in: AccountPath.slash))
     }
     
+    /// Get the local cached data URL for the item at the specified path if there is cached data there.
+    /// - Parameters:
+    ///   - path: The path used to download the data.
+    ///   - account: The WebDAV account used to download the data.
+    /// - Returns: The URL of the cached data, if it exists.
     func cachedDataURLIfExists<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> URL? {
         guard let url = cachedDataURL(forItemAtPath: path, account: account) else { return nil }
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
     
+    /// Delete the cached data for the item at the specified path from the disk cache.
+    /// - Parameters:
+    ///   - path: The path used to download the data.
+    ///   - account: The WebDAV account used to download the data.
+    /// - Throws: An error if the file couldn't be deleted.
     func deleteCachedDataFromDisk<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
         guard let url = cachedDataURLIfExists(forItemAtPath: path, account: account) else { return }
         try FileManager.default.removeItem(at: url)
     }
     
+    /// Delete all cached data from the disk cache.
+    /// - Throws: An error if the files couldn't be deleted.
     func deleteAllDiskCachedData() throws {
         guard let url = cacheFolder else { return }
         let fm = FileManager.default
@@ -42,10 +61,18 @@ public extension WebDAV {
     
     //MARK: Thumbnails
     
+    /// Get the local cached thumbnail URL for the image at the specified path.
+    ///
+    /// Gives the URL the thumbnail would be cached at wether or not there is any data cached there.
+    /// - Parameters:
+    ///   - path: The path that would be used to download the thumbnail.
+    ///   - account: The WebDAV account that would be used to download the thumbnail.
+    ///   - properties: The properties of the thumbnail.
+    /// - Returns: The URL where the thumbnail is or would be cached.
     func cachedThumbnailURL<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) -> URL? {
         guard let imageURL = cachedDataURL(forItemAtPath: path, account: account) else { return nil }
         
-        // If the query is stored in the URL as an actualy query, it won't be included when
+        // If the query is stored in the URL as an actual query, it won't be included when
         // saving to a file, so we have to manually add the query to the filename here.
         let directory = imageURL.deletingLastPathComponent()
         var filename = imageURL.lastPathComponent
@@ -55,16 +82,33 @@ public extension WebDAV {
         return directory.appendingPathComponent(filename)
     }
     
+    /// Get the local cached thumbnail URL for the image at the specified path if there is a cached thumbnail there.
+    /// - Parameters:
+    ///   - path: The path used to download the thumbnail.
+    ///   - account: The WebDAV account used to download the thumbnail.
+    ///   - properties: The properties of the thumbnail.
+    /// - Returns: The URL of the cached thumbnail, if it exists.
     func cachedThumbnailURLIfExists<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) -> URL? {
         guard let url = cachedThumbnailURL(forItemAtPath: path, account: account, with: properties) else { return nil }
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
     
+    /// Delete the cached thumbnail for the image at the specified path from the disk cache.
+    /// - Parameters:
+    ///   - path: The path used to download the thumbnail.
+    ///   - account: The WebDAV account used to download the thumbnail.
+    ///   - properties: The properties of the thumbnail.
+    /// - Throws: An error if the file couldn't be deleted.
     func deleteCachedThumbnailFromDisk<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) throws {
         guard let url = cachedThumbnailURLIfExists(forItemAtPath: path, account: account, with: properties) else { return }
         try FileManager.default.removeItem(at: url)
     }
     
+    /// Delete the cached thumbnails for the image at the specified path from the disk cache.
+    /// - Parameters:
+    ///   - path: The path used to download the thumbnails.
+    ///   - account: The WebDAV account used to download the thumbnails.
+    /// - Throws: An error if the files couldn't be deleted.
     func deleteAllCachedThumbnailsFromDisk<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
         let fm = FileManager.default
         guard let url = cachedDataURL(forItemAtPath: path, account: account) else { return }

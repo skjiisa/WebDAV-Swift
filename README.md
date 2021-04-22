@@ -2,6 +2,21 @@
 
 WebDAV communication library for Swift
 
+## Table of contents
+
++ [Install](#install)
++ [Usage](#usage)
+  + [Account](#account)
+  + [Making requests](#making-requests)
+  + [Listing files](#listing-files)
+  + [Data cache](#data-cache)
+  + [Images](#images)
+  + [Thumbnails](#thumbnails)
+  + [Theming](#theming)
++ [Upgrading](#upgrading)
++ [Contribution](#contribution)
+  + [Adding a WebDAV account](#adding-a-webdav-account)
+
 ## Install
 
 Install using Swift Package Manager.
@@ -58,11 +73,11 @@ Use [URLCredentialStorage](https://developer.apple.com/documentation/foundation/
 
 The path passed into functions should be the path to the file or directory relative to the `baseURL` in your account.
 
-For fuctions that read from or write to a file, this path should include the file name and extension.
+For functions that read from or write to a file, this path should include the file name and extension.
 
 #### Functions
 
-The functions currently available include
+The basic WebDAV functions currently available include
 
 + `listFiles`
 + `upload`
@@ -83,84 +98,121 @@ let path = "file.txt"
 let data = "File contents".data(using: .utf8)
         
 webDAV.upload(data: data, toPath: path, account: account, password: password) { error in
-    // Handle the error
+    // Check the error
 }
 ```
 
-### Listing Files
+### Listing files
 
 The `listFiles` function, if successful, will complete with a `WebDAVFile` array, which will be cached to memory and disk for quick retrieval later.
-By default, subsequest calls of `listFiles` on the same path with the same account will give the cached results instead of making a network request.
-You can use the `caching options` parameter to change this behavior.
-For example, if you want to force a request instead of accessing the cache, you can use `.doNotReturnCachedResult`.
+By default, subsequent calls of `listFiles` on the same path with the same account will give the cached results instead of making a network request.
+See [Caching behavior](#caching-behavior) for how to change this behavior.
 
-Another useful option is `.requestEvenIfCached`:
+A useful option for listing files in particular is `.requestEvenIfCached`:
 
 ```swift
 webDAV.listFiles(atPath: path, account: account, password: password, caching: .requestEvenIfCached) { files, error in
-    // Handle the cached files immediately.
-    // Handle the newly fetched files list after the request is complete.
+    // Show the cached files immediately.
+    // Update to show the newly fetched files list after the request is complete.
 }
 ```
 
 In this case, if there are cached files, the completion closure will run immediately with those cached files.
 Then a network request will be made to get an updated files list.
-If the files list from the server is unchaged from the cache, the function ends here and nothing else is called.
+If the files list from the server is unchanged from the cache, the function ends here and nothing else is called.
 If the files list from the server is different from the cache, the completion closure will run a second time with the new files list.
 
-### Image cache
+The files cache can be cleared using `clearFilesCache`, `clearFilesDiskCache`, or `clearFilesMemoryCache`.
 
-Included is functionality for downloading and caching images.
-This is based on [3lvis/Networking](https://github.com/3lvis/Networking).
+### Data cache
 
-You can download an image like you would any other file using `downloadImage`.
-This will download the image and save it to both an memory and disk cache.
+Included is functionality for downloading and caching data, images, and thumbnails (on Nextcloud servers).
 
-#### Functions
+Data downloaded using the `download` function, or the various image and thumbnail fetching functions, will cache to both memory and disk.
+The memory function is based off of [NSCache](https://developer.apple.com/documentation/foundation/nscache),
+meaning it uses Apple's own auto-eviction policies to clear up system memory.
+The disk cache data is stored in the `app.lyons.webdav-swift` folder in the [caches directory](https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/cachesdirectory).
 
-Image cache functions include
+Data cache functions include
 
-+ `downloadImage`
++ `getCachedData`
 + `deleteCachedData`
-+ `getCachedDataURL`
-+ `getCachedImage`
 + `deleteAllCachedData`
-+ `cancelRequest`
 + `getCacheByteCount`
 + `getCacheSize`
++ `cachedDataURL`
++ `cachedDataURLIfExists`
++ `deleteAllDiskCachedData`
 
-#### Thumbnails
+#### Caching behavior
+
+**Default caching behavior** is to return a cached result instead of making a request if there is one.
+Otherwise, make a request and cache the result.
+
+Use the `caching options` parameter in functions to change the caching behavior based on `WebDAVCachingOptions`.
+Setting the caching options to an empty set will use default behavior.
+
+Caching options include
+
++ `doNotCacheResult`
++ `doNotReturnCachedResult`
++ `removeExistingCache`
+  + Removes the cached result after returning it, if it exists.
+  + Use with `doNotReturnCachedResult` if you do not want the cached result returned.
++ `requestEvenIfCached`
+  + The completion closure for the request will run once with the cached data,
+  then again with the newly fetched data, assuming it is different.
+
+Convenience options include
+
++ `ignoreCache` will ignore the cached result if there is one, and won't cache the new result.
+  + Same as `[.doNotCacheResult, .doNotReturnCachedResult]`.
++ `disableCache` disables all caching for the request and deletes any existing cache for it.
+  + Same as `[.doNotCacheResult, .removeExistingCache, .doNotReturnCachedResult]`.
+
+### Images
+
+Images can be downloaded and cached using `downloadImage`. This will complete with a `UIImage` if available and caches the same way as the data cache.
+
+Image functions include:
+
++ `downloadImage`
++ `getCachedImage`
+
+_Why is there no `deleteCachedImage` or `cachedImageURL` function when there is `getCachedThumbnail` and `cachedThumbnailURL`?_  
+Images are stored in the disk cache the same way as data. The image-specific functions exist as a convenience for converting the data to UIImages and caching them in memory that way. Since the cached data URL does not change whether the data is an image or not, `deleteCachedData` and `cachedDataURL` can be used for images.
+
+### Thumbnails
 
 Along with downloading full-sized images, you can download **thumbnails** from Nextcloud servers.
 This currently only works with Nextcloud servers as thumbnail generation is not part of the WebDAV standard.
 
-Thumbnail generation requires you to specify to render the thumbnail with aspect fill or aspect fit can include dimensions.
+Thumbnail generation requires you to specify the properties for how the server should render the thumbnail.
+These properties exist as `ThumbnailProperties` objects and include dimensions and content mode.
 If no dimensions are specified, the server's default will be used (default is 64x64 on Nextcloud).
-When getting the URL of or deleting a cached URL, you must also specify these arguments in order to access the correct specific thumbnail.
-If you wish to access all thumbnails for a specific image, you can use `getAllCachedThumbnailURLs(forItemAtPath:, account:)` and `deleteAllCachedThumbnails(forItemAtPath:, account:)`.
+When getting the URL of or deleting a cached URL, you must also specify these properties in order to access the correct specific thumbnail.
+If you wish to access all thumbnails for a specific image at once, you can use `getAllCachedThumbnails` and `deleteAllCachedThumbnails`.
+
+Example:
 
 ```swift
-func downloadThumbnail<A: WebDAVAccount>(
-    path: String, account: A, password: String, with dimensions: CGSize?, aspectFill: Bool = true,
-    completion: @escaping (_ image: UIImage?, _ cachedImageURL: URL?, _ error: WebDAVError?) -> Void
-) -> String?
+webDAV.downloadThumbnail(path: imagePath, account: account, password: password, with: .init((width: 512, height: 512), contentMode: .fill)) { image, error in
+    // Check the error
+    // Display the image
+}
 ```
 
-Thumbnail Functions include
+Note that `ThumbnailProperties` objects can also be initialized using a `CGSize`, but doing so will truncate the size to integer pixel counts.
+
+Thumbnail functions include
 
 + `downloadThumbnail`
++ `getCachedThumbnail`
++ `getAllCachedThumbnails`
 + `deleteCachedThumbnail`
 + `deleteAllCachedThumbnails`
-+ `getAllCachedThumbnailURLs`
-+ `getAllCachedThumbnails`
-+ `getCachedThumbnailURL`
-+ `getCachedThumbnail`
-
-#### Cancelling image requests
-
-Unlike the other request functions, `downloadImage` and `downloadThumbnail` do not return a URLSessionTask.
-This is because they are based on 3lvis/Networking.
-Instead they return a request identifier that can be used to cancel the request using the `cancelRequest` function.
++ `cachedThumbnailURL`
++ `cachedThumbnailURLIfExists`
 
 ### Theming
 
@@ -173,14 +225,28 @@ Two functions exist for this:
 `getNextcloudColorHex` will give the server's accent color as a hex code starting with '#' (eg `#0082c9`).
 `getNextcloudTheme` will give the server's full theming information in the form of an `OCSTheme` object.
 
+## Upgrading
+
+Version 2.x used [3lvis/Networking](https://github.com/3lvis/Networking) for its image caching,
+but this was replaced with a custom in-house caching solution in 3.0.
+If upgrading from v2 to v3, run the function `clearV2Cache()` in order to remove previously cached data.
+
+For example, you could run something like this on startup
+
+```swift
+if !UserDefaults.standard.bool(forKey: "webDAV-v3-upgrade") {
+    try? webDAV.clearV2Cache()
+    UserDefaults.standard.setValue(true, forKey: "webDAV-v3-upgrade")
+}
+```
+
 ## Contribution
 
 This package depends on [drmohundro/SWXMLHash](https://github.com/drmohundro/SWXMLHash)
-and [3lvis/Networking](https://github.com/3lvis/Networking).
 which should automatically be fetched by Swift Package Manager in Xcode.
 
 To test any contributions you make, make test functions in `WebDAVTests`.
-In order to run tests, you need to pass account information in as environment variables.
+In order to run tests, you need to add a WebDAV account to the environment variables as described below.
 
 ### Adding a WebDAV account
 
@@ -193,6 +259,6 @@ Under Arguments in Test, add the following environment variables:
 + `webdav_user`: The username for your WebDAV account to test with
 + `webdav_password`: The password for your WebDAV account
 + `webdav_url`: The URL of the WebDAV server your account is on
-+ `image_path`: The path to an image file in the WebDAV storage
++ `image_path`: The path to an image file of type jpg/jpeg, png, or gif in the WebDAV storage
 
 Note that running the tests will create files on your WebDAV server, though they should also be deleted, assuming all the tests pass.

@@ -23,7 +23,7 @@ public struct WebDAVCachingOptions: OptionSet {
     public static let removeExistingCache      = WebDAVCachingOptions(rawValue: 1 << 1)
     /// If there is a cached result, ignore it and make a request.
     public static let doNotReturnCachedResult  = WebDAVCachingOptions(rawValue: 1 << 2)
-    /// If there is a cached result, return that, then make a request, returing that result again if it is different.
+    /// If there is a cached result, return that, then make a request, returning that result again if it is different.
     public static let requestEvenIfCached      = WebDAVCachingOptions(rawValue: 1 << 3)
     
     /// Disable all caching for this request including deleting any existing cache for it.

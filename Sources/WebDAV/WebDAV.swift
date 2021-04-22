@@ -56,8 +56,9 @@ public extension WebDAV {
     ///   - includeSelf: Whether or not the folder itself at the path should be included as a file in the list.
     ///   If so, the folder's WebDAVFile will be the first in the list.
     ///   Defaults to `false`.
+    ///   - options: Options for caching the results. Empty set uses default caching behavior.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - files: The files at the directory specified. `nil` if there was an error.
     ///   - error: A WebDAVError if the call was unsuccessful.
     /// - Returns: The data task for the request.
@@ -160,7 +161,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
@@ -184,7 +185,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The upload task for the request.
     @discardableResult
@@ -207,8 +208,9 @@ public extension WebDAV {
     ///   - path: The path of the file to download.
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
+    ///   - options: Options for caching the results. Empty set uses default caching behavior.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - data: The data of the file downloaded, if successful.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
@@ -223,7 +225,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
@@ -237,7 +239,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
@@ -252,7 +254,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
@@ -267,7 +269,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the nextwork call finishes on a background thread.
+    ///   Otherwise, it runs when the network call finishes on a background thread.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The data task for the request.
     @discardableResult
@@ -277,11 +279,17 @@ public extension WebDAV {
     
     //MARK: Cache
     
+    /// Get the cached data for the item at the specified path from the memory cache if available.
+    /// Otherwise load it from disk and save to memory cache.
+    /// - Parameters:
+    ///   - path: The path used to download the data.
+    ///   - account: The WebDAV account used to download the data.
+    /// - Returns: The cached data if it is available.
     func getCachedData<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> Data? {
         getCachedValue(cache: dataCache, forItemAtPath: path, account: account, valueFromData: { $0 })
     }
     
-    /// Get the cached value for a specified path directly from the memory cache.
+    /// Get the cached value for the item at the specified path directly from the memory cache.
     /// - Parameters:
     ///   - cache: The memory cache the data is stored in.
     ///   - path: The path used to download the data.
@@ -291,20 +299,22 @@ public extension WebDAV {
         cache[AccountPath(account: account, path: path)]
     }
     
-    /// Get the cached value for a specified path from the memory cache if available.
+    /// Generic function to get the cached value for the item at the specified path from the memory cache if available.
     /// Otherwise load it from disk and save to memory cache.
     /// - Parameters:
     ///   - cache: The memory cache for the value.
     ///   - path: The path used to download the data.
     ///   - account: The WebDAV account used to download the data.
     ///   - valueFromData: Convert `Data` to the desired value type.
-    /// - Returns: The cached data if it is available.
+    /// - Returns: The cached value if it is available.
     func getCachedValue<A: WebDAVAccount, Value: Equatable>(cache: Cache<AccountPath, Value>, forItemAtPath path: String, account: A, valueFromData: @escaping (_ data: Data) -> Value?) -> Value? {
         getCachedValue(from: cache, forItemAtPath: path, account: account) ??
             loadCachedValueFromDisk(cache: cache, forItemAtPath: path, account: account, valueFromData: valueFromData)
     }
     
-    /// Deletes the cached data for a certain path.
+    /// Deletes the cached data or image for the item at the specified path.
+    ///
+    /// Deletes cached data from both memory and disk caches. Deletes cached data from both `dataCache` and `imageCache`.
     /// - Parameters:
     ///   - path: The path used to download the data.
     ///   - account: The WebDAV account used to download the data.
@@ -318,6 +328,8 @@ public extension WebDAV {
     }
     
     /// Deletes all downloaded data that has been cached.
+    ///
+    /// Does not clear the files cache.
     /// - Throws: An error if the resources couldn't be deleted.
     func deleteAllCachedData() throws {
         dataCache.removeAllValues()
@@ -346,7 +358,7 @@ public extension WebDAV {
         byteCountFormatter.string(fromByteCount: Int64(getCacheByteCount()))
     }
     
-    /// The URL to the directory of the depricated Networking image data cache.
+    /// The URL to the directory of the deprecated Networking image data cache.
     var networkingCacheURL: URL? {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("com.3lvis.networking")
     }
