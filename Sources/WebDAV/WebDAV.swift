@@ -358,7 +358,7 @@ public extension WebDAV {
         byteCountFormatter.string(fromByteCount: Int64(getCacheByteCount()))
     }
     
-    /// The URL to the directory of the depricated Networking image data cache.
+    /// The URL to the directory of the deprecated Networking image data cache.
     var networkingCacheURL: URL? {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("com.3lvis.networking")
     }
