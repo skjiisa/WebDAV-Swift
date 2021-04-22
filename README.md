@@ -185,6 +185,21 @@ Two functions exist for this:
 `getNextcloudColorHex` will give the server's accent color as a hex code starting with '#' (eg `#0082c9`).
 `getNextcloudTheme` will give the server's full theming information in the form of an `OCSTheme` object.
 
+## Upgrading
+
+Version 2.x used [3lvis/Networking](https://github.com/3lvis/Networking) for its image caching,
+but this was replaced with a custom in-house caching solution in 3.0.
+If upgrading from v2 to v3, run the function `clearV2Cache()` in order to remove previously cached data.
+
+For example, you could run something like this on startup
+
+```swift
+if !UserDefaults.standard.bool(forKey: "webDAV-v3-upgrade") {
+    try? webDAV.clearV2Cache()
+    UserDefaults.standard.setValue(true, forKey: "webDAV-v3-upgrade")
+}
+```
+
 ## Contribution
 
 This package depends on [drmohundro/SWXMLHash](https://github.com/drmohundro/SWXMLHash)
