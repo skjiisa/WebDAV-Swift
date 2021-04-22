@@ -8,8 +8,10 @@ WebDAV communication library for Swift
 + [Usage](#usage)
   + [Account](#account)
   + [Making requests](#making-requests)
-  + [Listing Files](#listing-files)
+  + [Listing files](#listing-files)
   + [Data cache](#data-cache)
+  + [Images](#images)
+  + [Thumbnails](#thumbnails)
   + [Theming](#theming)
 + [Upgrading](#upgrading)
 + [Contribution](#contribution)
@@ -100,19 +102,18 @@ webDAV.upload(data: data, toPath: path, account: account, password: password) { 
 }
 ```
 
-### Listing Files
+### Listing files
 
 The `listFiles` function, if successful, will complete with a `WebDAVFile` array, which will be cached to memory and disk for quick retrieval later.
 By default, subsequent calls of `listFiles` on the same path with the same account will give the cached results instead of making a network request.
-You can use the `caching options` parameter to change this behavior.
-For example, if you want to force a request instead of accessing the cache, you can use `.doNotReturnCachedResult`.
+See [Caching behavior](#caching-behavior) for how to change this behavior.
 
-Another useful option is `.requestEvenIfCached`:
+A useful option for listing files in particular is `.requestEvenIfCached`:
 
 ```swift
 webDAV.listFiles(atPath: path, account: account, password: password, caching: .requestEvenIfCached) { files, error in
-    // Handle the cached files immediately.
-    // Handle the newly fetched files list after the request is complete.
+    // Show the cached files immediately.
+    // Update to show the newly fetched files list after the request is complete.
 }
 ```
 
@@ -143,7 +144,33 @@ Data cache functions include
 + `cachedDataURLIfExists`
 + `deleteAllDiskCachedData`
 
-#### Image cache
+#### Caching behavior
+
+**Default caching behavior** is to return a cached result instead of making a request if there is one.
+Otherwise, make a request and cache the result.
+
+Use the `caching options` parameter in functions to change the caching behavior based on `WebDAVCachingOptions`.
+Setting the caching options to an empty set will use default behavior.
+
+Caching options include
+
++ `doNotCacheResult`
++ `doNotReturnCachedResult`
++ `removeExistingCache`
+  + Removes the cached result after returning it, if it exists.
+  + Use with `doNotReturnCachedResult` if you do not want the cached result returned.
++ `requestEvenIfCached`
+  + The completion closure for the request will run once with the cached data,
+  then again with the newly fetched data, assuming it is different.
+
+Convenience options include
+
++ `ignoreCache` will ignore the cached result if there is one, and won't cache the new result.
+  + Same as `[.doNotCacheResult, .doNotReturnCachedResult]`.
++ `disableCache` disables all caching for the request and deletes any existing cache for it.
+  + Same as `[.doNotCacheResult, .removeExistingCache, .doNotReturnCachedResult]`.
+
+### Images
 
 Images can be downloaded and cached using `downloadImage`. This will complete with a `UIImage` if available and caches the same way as the data cache.
 
@@ -155,7 +182,7 @@ Image functions include:
 _Why is there no `deleteCachedImage` or `cachedImageURL` function when there is `getCachedThumbnail` and `cachedThumbnailURL`?_  
 Images are stored in the disk cache the same way as data. The image-specific functions exist as a convenience for converting the data to UIImages and caching them in memory that way. Since the cached data URL does not change whether the data is an image or not, `deleteCachedData` and `cachedDataURL` can be used for images.
 
-#### Thumbnails
+### Thumbnails
 
 Along with downloading full-sized images, you can download **thumbnails** from Nextcloud servers.
 This currently only works with Nextcloud servers as thumbnail generation is not part of the WebDAV standard.
