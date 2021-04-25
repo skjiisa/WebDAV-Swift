@@ -610,14 +610,20 @@ final class WebDAVTests: XCTestCase {
         
         XCTAssert(FileManager.default.fileExists(atPath: cachedThumbnailFillURL.path))
         XCTAssert(FileManager.default.fileExists(atPath: cachedThumbnailFitURL.path))
-        XCTAssertEqual(webDAV.getAllCachedThumbnails(forItemAtPath: imagePath, account: account)?.count, 2)
+        let propertiesSet = Set([fitProperties, fillProperties])
+        XCTAssertEqual(Set(webDAV.getAllMemoryCachedThumbnails(forItemAtPath: imagePath, account: account)!.keys), propertiesSet)
         let allThumbnailURLs = try webDAV.getAllCachedThumbnailURLs(forItemAtPath: imagePath, account: account)!
         XCTAssert(allThumbnailURLs.contains(cachedThumbnailFillURL))
         XCTAssert(allThumbnailURLs.contains(cachedThumbnailFitURL))
         
+        // Clear the memory cache and check that they can be loaded from disk cache
+        let accountPath = AccountPath(account: account, path: imagePath)
+        webDAV.thumbnailCache.removeValue(forKey: accountPath)
+        XCTAssertNoThrow(XCTAssertEqual(Set(try webDAV.getAllCachedThumbnails(forItemAtPath: imagePath, account: account)!.keys), propertiesSet))
+        
         // Delete all cached thumbnails and check that they're both gone
         XCTAssertNoThrow(try webDAV.deleteAllCachedThumbnails(forItemAtPath: imagePath, account: account))
-        XCTAssertNil(webDAV.getAllCachedThumbnails(forItemAtPath: imagePath, account: account))
+        XCTAssertNil(webDAV.getAllMemoryCachedThumbnails(forItemAtPath: imagePath, account: account))
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailFillURL.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailFitURL.path))
     }
