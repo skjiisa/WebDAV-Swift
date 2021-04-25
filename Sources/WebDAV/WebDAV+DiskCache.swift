@@ -93,6 +93,22 @@ public extension WebDAV {
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
     
+    /// Get the URLs of the cached thumbnails for the image at the specified path from the disk cache.
+    /// - Parameters:
+    ///   - path: The path used to download the thumbnails.
+    ///   - account: The WebDAV account used to download the thumbnails.
+    /// - Throws: An error if the caches directory couldn't be listed.
+    func getAllCachedThumbnailURLs<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> [URL]? {
+        let fm = FileManager.default
+        guard let url = cachedDataURL(forItemAtPath: path, account: account) else { return nil }
+        
+        let filename = url.lastPathComponent
+        let directory = url.deletingLastPathComponent()
+        guard fm.fileExists(atPath: directory.path) else { return nil }
+        
+        return try fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: []).filter { $0.lastPathComponent != filename && $0.lastPathComponent.starts(with: filename) }
+    }
+    
     /// Delete the cached thumbnail for the image at the specified path from the disk cache.
     /// - Parameters:
     ///   - path: The path used to download the thumbnail.
@@ -110,16 +126,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account used to download the thumbnails.
     /// - Throws: An error if the files couldn't be deleted.
     func deleteAllCachedThumbnailsFromDisk<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
-        let fm = FileManager.default
-        guard let url = cachedDataURL(forItemAtPath: path, account: account) else { return }
-        
-        let filename = url.lastPathComponent
-        let directory = url.deletingLastPathComponent()
-        guard fm.fileExists(atPath: directory.path) else { return }
-        
-        for item in try fm.contentsOfDirectory(atPath: directory.path) where item != filename && item.starts(with: filename) {
-            try fm.removeItem(at: directory.appendingPathComponent(item))
-        }
+        try getAllCachedThumbnailURLs(forItemAtPath: path, account: account)?.forEach { try FileManager.default.removeItem(at: $0) }
     }
     
 }

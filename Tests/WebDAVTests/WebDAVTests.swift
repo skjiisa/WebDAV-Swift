@@ -594,7 +594,7 @@ final class WebDAVTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailURL.path))
     }
     
-    func testGeneralThumbnailCache() {
+    func testGeneralThumbnailCache() throws {
         guard let (account, password) = getAccount() else { return XCTFail() }
         guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
             return XCTFail("You need to set the image_path in the environment.")
@@ -611,6 +611,9 @@ final class WebDAVTests: XCTestCase {
         XCTAssert(FileManager.default.fileExists(atPath: cachedThumbnailFillURL.path))
         XCTAssert(FileManager.default.fileExists(atPath: cachedThumbnailFitURL.path))
         XCTAssertEqual(webDAV.getAllCachedThumbnails(forItemAtPath: imagePath, account: account)?.count, 2)
+        let allThumbnailURLs = try webDAV.getAllCachedThumbnailURLs(forItemAtPath: imagePath, account: account)!
+        XCTAssert(allThumbnailURLs.contains(cachedThumbnailFillURL))
+        XCTAssert(allThumbnailURLs.contains(cachedThumbnailFitURL))
         
         // Delete all cached thumbnails and check that they're both gone
         XCTAssertNoThrow(try webDAV.deleteAllCachedThumbnails(forItemAtPath: imagePath, account: account))
