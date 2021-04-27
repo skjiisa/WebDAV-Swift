@@ -200,13 +200,28 @@ public extension WebDAV {
     
     //MARK: Thumbnail Cache
     
-    /// Get the cached thumbnails of the image at the specified path.
+    /// Get the cached thumbnails of the image at the specified path from the memory cache only.
     /// - Parameters:
     ///   - path: The path used to download the thumbnails.
     ///   - account: The WebDAV account used to download the thumbnails.
     /// - Returns: A dictionary of thumbnails with their properties as keys.
-    func getAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> [ThumbnailProperties: UIImage]? {
+    func getAllMemoryCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> [ThumbnailProperties: UIImage]? {
         getCachedValue(from: thumbnailCache, forItemAtPath: path, account: account)
+    }
+    
+    /// Get all cached thumbnails of the image at the specified path.
+    ///
+    /// This loads thumbnails from the disk cache and can be
+    /// expensive to run if there are many cached thumbnails.
+    ///
+    /// To get only thumbnails cached in memory, use `getAllMemoryCachedThumbnails`.
+    /// - Parameters:
+    ///   - path: The path used to download the thumbnails.
+    ///   - account: The WebDAV account used to download the thumbnails.
+    /// - Returns: A dictionary of thumbnails with their properties as keys.
+    /// - Throws: An error if the cached files couldn't be loaded.
+    func getAllCachedThumbnails<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> [ThumbnailProperties: UIImage]? {
+        try loadAllCachedThumbnailsFromDisk(forItemAtPath: path, account: account)
     }
     
     /// Get the cached thumbnail of the image at the specified path with the specified properties, if available.
@@ -216,7 +231,7 @@ public extension WebDAV {
     ///   - properties: The properties of the thumbnail.
     /// - Returns: The thumbnail if it is available.
     func getCachedThumbnail<A: WebDAVAccount>(forItemAtPath path: String, account: A, with properties: ThumbnailProperties) -> UIImage? {
-        getAllCachedThumbnails(forItemAtPath: path, account: account)?[properties] ??
+        getAllMemoryCachedThumbnails(forItemAtPath: path, account: account)?[properties] ??
             loadCachedThumbnailFromDisk(forItemAtPath: path, account: account, with: properties)
     }
     

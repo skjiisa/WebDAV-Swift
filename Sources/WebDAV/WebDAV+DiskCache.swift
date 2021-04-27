@@ -93,6 +93,22 @@ public extension WebDAV {
         return FileManager.default.fileExists(atPath: url.path) ? url : nil
     }
     
+    /// Get the URLs of the cached thumbnails for the image at the specified path from the disk cache.
+    /// - Parameters:
+    ///   - path: The path used to download the thumbnails.
+    ///   - account: The WebDAV account used to download the thumbnails.
+    /// - Throws: An error if the caches directory couldn't be listed.
+    func getAllCachedThumbnailURLs<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> [URL]? {
+        let fm = FileManager.default
+        guard let url = cachedDataURL(forItemAtPath: path, account: account) else { return nil }
+        
+        let filename = url.lastPathComponent
+        let directory = url.deletingLastPathComponent()
+        guard fm.fileExists(atPath: directory.path) else { return nil }
+        
+        return try fm.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil, options: []).filter { $0.lastPathComponent != filename && $0.lastPathComponent.starts(with: filename) }
+    }
+    
     /// Delete the cached thumbnail for the image at the specified path from the disk cache.
     /// - Parameters:
     ///   - path: The path used to download the thumbnail.
@@ -110,16 +126,7 @@ public extension WebDAV {
     ///   - account: The WebDAV account used to download the thumbnails.
     /// - Throws: An error if the files couldn't be deleted.
     func deleteAllCachedThumbnailsFromDisk<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws {
-        let fm = FileManager.default
-        guard let url = cachedDataURL(forItemAtPath: path, account: account) else { return }
-        
-        let filename = url.lastPathComponent
-        let directory = url.deletingLastPathComponent()
-        guard fm.fileExists(atPath: directory.path) else { return }
-        
-        for item in try fm.contentsOfDirectory(atPath: directory.path) where item != filename && item.starts(with: filename) {
-            try fm.removeItem(at: directory.appendingPathComponent(item))
-        }
+        try getAllCachedThumbnailURLs(forItemAtPath: path, account: account)?.forEach { try FileManager.default.removeItem(at: $0) }
     }
     
 }
@@ -192,6 +199,47 @@ extension WebDAV {
               let thumbnail = UIImage(data: data) else { return nil }
         saveToMemoryCache(thumbnail: thumbnail, forItemAtPath: path, account: account, with: properties)
         return thumbnail
+    }
+    
+    func loadAllCachedThumbnailsFromDisk<A: WebDAVAccount>(forItemAtPath path: String, account: A) throws -> [ThumbnailProperties: UIImage]? {
+        guard let urls = try getAllCachedThumbnailURLs(forItemAtPath: path, account: account) else { return nil }
+        let thumbnails = try urls.compactMap { url -> (ThumbnailProperties, UIImage)? in
+            // Load the thumbnail
+            let data = try Data(contentsOf: url)
+            guard let thumbnail = UIImage(data: data) else { return nil }
+            
+            // Decode the thumbnail properties
+            let properties: ThumbnailProperties
+            var contentMode = ThumbnailProperties.ContentMode.fit
+            
+            let fileName = url.lastPathComponent
+            let range = NSRange(location: 0, length: fileName.utf16.count)
+            if fileName.range(of: "[?&]a=1", options: .regularExpression) != nil {
+                contentMode = .fill
+            }
+            
+            let regex = try NSRegularExpression(pattern: "[?&]x=([0-9]*)&y=([0-9]*)")
+            if let match = regex.matches(in: fileName, options: [], range: range).last,
+               let xRange = Range(match.range(at: 1), in: fileName),
+               let yRange = Range(match.range(at: 2), in: fileName),
+               let x = Int(fileName[xRange]),
+               let y = Int(fileName[yRange]) {
+                properties = ThumbnailProperties((width: x, height: y), contentMode: contentMode)
+            } else {
+                properties = ThumbnailProperties(contentMode: contentMode)
+            }
+            
+            return (properties, thumbnail)
+        }
+        
+        // Save loaded thumbnails to memory cache
+        
+        let accountPath = AccountPath(account: account, path: path)
+        var cachedThumbnails = thumbnailCache[accountPath] ?? [:]
+        cachedThumbnails.merge(thumbnails, uniquingKeysWith: { current, _ in current })
+        thumbnailCache[accountPath] = cachedThumbnails
+        
+        return cachedThumbnails
     }
     
     func saveThumbnailToDiskCache<A: WebDAVAccount>(data: Data, forItemAtPath path: String, account: A, with properties: ThumbnailProperties) throws {
