@@ -67,6 +67,16 @@ public struct ThumbnailProperties: Hashable {
 
 public extension WebDAV {
     
+    enum ThumbnailPreviewMode {
+        /// Only show a preview thumbnail if there is already one loaded into memory.
+        case memoryOnly
+        /// Allow the disk cache to be loaded if there are no thumbnails in memory.
+        /// Note that this can be an expensive process and is run on the main thread.
+        case diskAllowed
+        /// Load the specific thumbnail if available, from disk if not in memory.
+        case specific(ThumbnailProperties)
+    }
+    
     //MARK: Images
     
     /// Download and cache an image from the specified file path.
@@ -75,16 +85,40 @@ public extension WebDAV {
     ///   - account: The WebDAV account.
     ///   - password: The WebDAV account's password.
     ///   - options: Options for caching the results. Empty set uses default caching behavior.
-    ///   - completion: If account properties are invalid, this will run immediately on the same thread.
-    ///   Otherwise, it runs when the network call finishes on a background thread.
+    ///   - preview: Behavior for running the completion closure with cached thumbnails before the full-sized image is fetched.
+    ///   Note that `.diskAllowed` will load all thumbnails for the given image
+    ///   will be fetched on the main thread, which can be an expensive process.
+    ///   `.memoryOnly` and `.specific()` are recommended.
+    ///   - completion: If account properties are invalid, this will run immediately on the same thread with an error.
+    ///   Otherwise, it will run on the main thread with a preview if available and a `preview` mode is provided,
+    ///   then runs on a background thread when the network call finishes.
     ///   - image: The image downloaded, if successful.
     ///   The cached image if it has already been downloaded.
     ///   - cachedImageURL: The URL of the cached image.
     ///   - error: A WebDAVError if the call was unsuccessful. `nil` if it was.
     /// - Returns: The request identifier.
     @discardableResult
-    func downloadImage<A: WebDAVAccount>(path: String, account: A, password: String, caching options: WebDAVCachingOptions = [], completion: @escaping (_ image: UIImage?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
-        cachingDataTask(cache: imageCache, path: path, account: account, password: password, caching: options, valueFromData: { UIImage(data: $0) }, completion: completion)
+    func downloadImage<A: WebDAVAccount>(path: String, account: A, password: String, caching options: WebDAVCachingOptions = [], preview: ThumbnailPreviewMode? = .none, completion: @escaping (_ image: UIImage?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+        cachingDataTask(cache: imageCache, path: path, account: account, password: password, caching: options, valueFromData: { UIImage(data: $0) }, placeholder: {
+            // Load placeholder thumbnail
+            var thumbnails = self.getAllMemoryCachedThumbnails(forItemAtPath: path, account: account)?.values
+            
+            switch preview {
+            case .none:
+                return nil
+            case .specific(let properties):
+                return self.getCachedThumbnail(forItemAtPath: path, account: account, with: properties)
+            case .memoryOnly:
+                break
+            case .diskAllowed:
+                // Only load from disk if there aren't any in memory
+                if thumbnails?.isEmpty ?? true {
+                    thumbnails = self.getAllMemoryCachedThumbnails(forItemAtPath: path, account: account)?.values
+                }
+            }
+            let largestThumbnail = thumbnails?.max(by: { $0.size.width * $0.size.height < $1.size.width * $1.size.height })
+            return largestThumbnail
+        }, completion: completion)
     }
     
     //MARK: Thumbnails

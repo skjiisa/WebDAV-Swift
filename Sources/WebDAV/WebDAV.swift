@@ -384,7 +384,10 @@ extension WebDAV {
     
     //MARK: Standard Requests
     
-    func cachingDataTask<A: WebDAVAccount, Value: Equatable>(cache: Cache<AccountPath, Value>, path: String, account: A, password: String, caching options: WebDAVCachingOptions, valueFromData: @escaping (_ data: Data) -> Value?, completion: @escaping (_ value: Value?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
+    func cachingDataTask<A: WebDAVAccount, Value: Equatable>(
+        cache: Cache<AccountPath, Value>, path: String, account: A, password: String,
+        caching options: WebDAVCachingOptions, valueFromData: @escaping (_ data: Data) -> Value?, placeholder: (() -> Value?)? = nil,
+        completion: @escaping (_ value: Value?, _ error: WebDAVError?) -> Void) -> URLSessionDataTask? {
         
         // Check cache
         
@@ -407,8 +410,14 @@ extension WebDAV {
             }
         }
         
+        // Cached data was not returned. Continue with network fetch.
+        
         if options.contains(.removeExistingCache) {
             try? deleteCachedData(forItemAtPath: path, account: account)
+        }
+        
+        if let placeholderValue = placeholder?() {
+            completion(placeholderValue, nil)
         }
         
         // Create network request
