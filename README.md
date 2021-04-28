@@ -182,6 +182,20 @@ Image functions include:
 _Why is there no `deleteCachedImage` or `cachedImageURL` function when there is `getCachedThumbnail` and `cachedThumbnailURL`?_  
 Images are stored in the disk cache the same way as data. The image-specific functions exist as a convenience for converting the data to UIImages and caching them in memory that way. Since the cached data URL does not change whether the data is an image or not, `deleteCachedData` and `cachedDataURL` can be used for images.
 
+#### Thumbnail preview
+
+If there are already cached thumbnails for the image you are trying to fetch, you can use the `preview` parameter to specify that you would like to get that thumbnail first while the full-size image is downloading.
+
+```swift
+webDAV.downloadImage(path: imagePath, account: account, password: password, preview: .memoryOnly) { image, error in
+    // Display the image.
+    // This will run once on the largest cached thumbnail (if there are any)
+    // and again with the full-size image.
+}
+```
+
+See [Thumbnails](#thumbnails) for more details on thumbnails.
+
 ### Thumbnails
 
 Along with downloading full-sized images, you can download **thumbnails** from Nextcloud servers.
