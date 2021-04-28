@@ -511,7 +511,7 @@ final class WebDAVTests: XCTestCase {
         XCTAssertNoThrow(try webDAV.deleteCachedData(forItemAtPath: imagePath, account: account))
     }
     
-    //MARK: Image Cache
+    //MARK: Images
     
     func testDownloadImage() {
         guard let (account, password) = getAccount() else { return XCTFail() }
@@ -626,6 +626,30 @@ final class WebDAVTests: XCTestCase {
         XCTAssertNil(webDAV.getAllMemoryCachedThumbnails(forItemAtPath: imagePath, account: account))
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailFillURL.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: cachedThumbnailFitURL.path))
+    }
+    
+    func testThumbnailPlaceholder() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
+            return XCTFail("You need to set the image_path in the environment.")
+        }
+        
+        let expectation = XCTestExpectation(description: "Fetch image")
+        // Check that the completion closure is run first
+        // on the preview then again for the image itself.
+        expectation.expectedFulfillmentCount = 2
+        
+        downloadThumbnail(imagePath: imagePath, account: account, password: password)
+        
+        try? webDAV.deleteCachedData(forItemAtPath: imagePath, account: account)
+        webDAV.downloadImage(path: imagePath, account: account, password: password, preview: .memoryOnly) { image, error in
+            XCTAssertNil(error)
+            XCTAssertNotNil(image)
+            expectation.fulfill()
+        }
+        try? webDAV.deleteCachedData(forItemAtPath: imagePath, account: account)
+        
+        wait(for: [expectation], timeout: 10.0)
     }
     
     //MARK: OCS
@@ -800,6 +824,7 @@ final class WebDAVTests: XCTestCase {
         ("testThumbnailCacheURL", testThumbnailCacheURL),
         ("testSpecificThumbnailCache", testSpecificThumbnailCache),
         ("testGeneralThumbnailCache", testGeneralThumbnailCache),
+        ("testThumbnailPlaceholder", testThumbnailPlaceholder),
         // OCS
         ("testTheme", testTheme),
         ("testColorHex", testColorHex)
