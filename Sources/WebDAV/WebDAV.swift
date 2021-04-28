@@ -416,9 +416,12 @@ extension WebDAV {
             try? deleteCachedData(forItemAtPath: path, account: account)
         }
         
-        if let placeholderValue = placeholder?() {
-            completion(placeholderValue, nil)
+        let placeholderTask = DispatchWorkItem {
+            if let placeholderValue = placeholder?() {
+                completion(placeholderValue, nil)
+            }
         }
+        DispatchQueue.global(qos: .utility).async(execute: placeholderTask)
         
         // Create network request
         
@@ -436,6 +439,7 @@ extension WebDAV {
                 return completion(nil, error)
             } else if let data = data,
                       let value = valueFromData(data) {
+                placeholderTask.cancel()
                 // Cache result
                 if !options.contains(.removeExistingCache),
                    !options.contains(.doNotCacheResult) {

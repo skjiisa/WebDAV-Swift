@@ -86,11 +86,10 @@ public extension WebDAV {
     ///   - password: The WebDAV account's password.
     ///   - options: Options for caching the results. Empty set uses default caching behavior.
     ///   - preview: Behavior for running the completion closure with cached thumbnails before the full-sized image is fetched.
-    ///   Note that `.diskAllowed` will load all thumbnails for the given image
-    ///   will be fetched on the main thread, which can be an expensive process.
-    ///   `.memoryOnly` and `.specific()` are recommended.
+    ///   Note that `.diskAllowed` will load all thumbnails for the given image which can be an expensive process.
+    ///   `.memoryOnly` and `.specific()` are recommended unless you do not know what thumbnails exist.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread with an error.
-    ///   Otherwise, it will run on the main thread with a preview if available and a `preview` mode is provided,
+    ///   Otherwise, it will run on a utility thread with a preview (if available and a `preview` mode is provided),
     ///   then runs on a background thread when the network call finishes.
     ///   - image: The image downloaded, if successful.
     ///   The cached image if it has already been downloaded.
