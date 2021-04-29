@@ -19,6 +19,8 @@ public enum WebDAVError: Error {
     case unsupported
     /// Another unspecified Error occurred.
     case nsError(Error)
+    /// The returned value is simply a placeholder.
+    case placeholder
     
     static func getError(statusCode: Int?, error: Error?) -> WebDAVError? {
         if let statusCode = statusCode {

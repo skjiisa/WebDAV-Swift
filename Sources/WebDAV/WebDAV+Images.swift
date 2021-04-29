@@ -89,8 +89,9 @@ public extension WebDAV {
     ///   Note that `.diskAllowed` will load all thumbnails for the given image which can be an expensive process.
     ///   `.memoryOnly` and `.specific()` are recommended unless you do not know what thumbnails exist.
     ///   - completion: If account properties are invalid, this will run immediately on the same thread with an error.
-    ///   Otherwise, it will run on a utility thread with a preview (if available and a `preview` mode is provided),
-    ///   then runs on a background thread when the network call finishes.
+    ///   Otherwise, it will run on a utility thread with a preview (if available and a `preview` mode is provided) with a `.placeholder` error,
+    ///   then run on a background thread when the network call finishes.
+    ///   This will not be called with the thumbnail after being called with the full-size image.
     ///   - image: The image downloaded, if successful.
     ///   The cached image if it has already been downloaded.
     ///   - cachedImageURL: The URL of the cached image.

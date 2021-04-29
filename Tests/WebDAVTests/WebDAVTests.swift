@@ -634,22 +634,26 @@ final class WebDAVTests: XCTestCase {
             return XCTFail("You need to set the image_path in the environment.")
         }
         
-        let expectation = XCTestExpectation(description: "Fetch image")
-        // Check that the completion closure is run first
-        // on the preview then again for the image itself.
-        expectation.expectedFulfillmentCount = 2
+        let thumbnailExpectation = XCTestExpectation(description: "Get the cached thumbnail")
+        let imageExpectation = XCTestExpectation(description: "Fetch image")
         
         downloadThumbnail(imagePath: imagePath, account: account, password: password)
         
         try? webDAV.deleteCachedData(forItemAtPath: imagePath, account: account)
         webDAV.downloadImage(path: imagePath, account: account, password: password, preview: .memoryOnly) { image, error in
-            XCTAssertNil(error)
+            switch error {
+            case .placeholder:
+                thumbnailExpectation.fulfill()
+            case .none:
+                imageExpectation.fulfill()
+            case .some(let unexpectedError):
+                XCTFail("\(unexpectedError)")
+            }
             XCTAssertNotNil(image)
-            expectation.fulfill()
         }
         try? webDAV.deleteCachedData(forItemAtPath: imagePath, account: account)
         
-        wait(for: [expectation], timeout: 10.0)
+        wait(for: [thumbnailExpectation, imageExpectation], timeout: 10.0)
     }
     
     //MARK: OCS

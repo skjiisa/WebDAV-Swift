@@ -184,13 +184,24 @@ Images are stored in the disk cache the same way as data. The image-specific fun
 
 #### Thumbnail preview
 
-If there are already cached thumbnails for the image you are trying to fetch, you can use the `preview` parameter to specify that you would like to get that thumbnail first while the full-size image is downloading.
+If there are already cached thumbnails for the image you are trying to fetch, you can use the `preview` parameter to specify that you would like to get that thumbnail first while the full-size image is downloading. When you do this, the completion closure will run with a `.placeholder` error on the call with the thumbnail.
 
 ```swift
 webDAV.downloadImage(path: imagePath, account: account, password: password, preview: .memoryOnly) { image, error in
-    // Display the image.
-    // This will run once on the largest cached thumbnail (if there are any)
-    // and again with the full-size image.
+    switch error {
+    case .none, .placeholder:
+        // .none is the full-size image.
+        // .placeholder is the thumbnail.
+        // The completion closure will not be run with the thumbnail after
+        // it is run with the full-size image, so assuming you don't have
+        // a use for the thumbnail after the full-size image loads, you
+        // shouldn't need to check which it is before displaying.
+        break
+    case .some(let unexpectedError):
+        // Log the error
+    }
+    
+    // Display the image
 }
 ```
 

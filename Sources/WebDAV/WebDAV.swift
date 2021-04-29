@@ -418,7 +418,7 @@ extension WebDAV {
         
         let placeholderTask = DispatchWorkItem {
             if let placeholderValue = placeholder?() {
-                completion(placeholderValue, nil)
+                completion(placeholderValue, .placeholder)
             }
         }
         DispatchQueue.global(qos: .utility).async(execute: placeholderTask)
