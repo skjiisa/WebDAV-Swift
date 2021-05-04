@@ -20,7 +20,7 @@ public struct WebDAVFile: Identifiable, Codable, Equatable, Hashable {
     public private(set) var size: Int
     public private(set) var etag: String
     
-    init(path: String, id: String, isDirectory: Bool, lastModified: Date, size: Int, etag: String) {
+    public init(path: String, id: String, isDirectory: Bool, lastModified: Date, size: Int, etag: String) {
         self.path = path
         self.id = id
         self.isDirectory = isDirectory
