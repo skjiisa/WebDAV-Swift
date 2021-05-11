@@ -430,13 +430,13 @@ final class WebDAVTests: XCTestCase {
     
     //MARK: Disk Cache Cleanup
     
-    func testCleanupDiskCacheFile() {
+    func testCleanupDiskCacheFileRoot() {
         guard let (account, password) = getAccount() else { return XCTFail() }
         
-        let realFileExpectation = XCTestExpectation(description: "Download real file")
         let expectation = XCTestExpectation(description: "List files from WebDAV")
         
         // Add dummy file to disk cache
+        
         let dummyPath = UUID().uuidString + ".txt"
         let data = UUID().uuidString.data(using: .utf8)!
         let dummyFileURL = webDAV.cachedDataURL(forItemAtPath: dummyPath, account: account)!
@@ -445,13 +445,10 @@ final class WebDAVTests: XCTestCase {
         XCTAssert(FileManager.default.fileExists(atPath: dummyFileURL.path))
         
         // Create real file
+        
         let realFile = uploadData(account: account, password: password)
         let realFileURL = webDAV.cachedDataURL(forItemAtPath: realFile.fileName, account: account)!
-        webDAV.download(fileAtPath: realFile.fileName, account: account, password: password, caching: .doNotReturnCachedResult) { _, _ in
-            realFileExpectation.fulfill()
-        }
-        
-        wait(for: [realFileExpectation], timeout: 10.0)
+        downloadData(path: realFile.fileName, account: account, password: password)
         
         XCTAssert(FileManager.default.fileExists(atPath: realFileURL.path))
         
@@ -466,8 +463,8 @@ final class WebDAVTests: XCTestCase {
         wait(for: [expectation], timeout: 10.0)
         
         // Check that the fake cached file was cleaned up
-        
         XCTAssertFalse(FileManager.default.fileExists(atPath: dummyFileURL.path))
+        // Check that the real file still exists
         XCTAssert(FileManager.default.fileExists(atPath: realFileURL.path))
         
         deleteFile(path: realFile.fileName, account: account, password: password)
@@ -481,9 +478,19 @@ final class WebDAVTests: XCTestCase {
         // Add dummy folder to disk cache
         
         let path = UUID().uuidString
-        let tempFileURL = webDAV.cachedDataURL(forItemAtPath: path, account: account)!
-        XCTAssertNoThrow(try FileManager.default.createDirectory(at: tempFileURL, withIntermediateDirectories: true))
-        XCTAssert(FileManager.default.fileExists(atPath: tempFileURL.path))
+        let dummyFileURL = webDAV.cachedDataURL(forItemAtPath: path, account: account)!
+        XCTAssertNoThrow(try FileManager.default.createDirectory(at: dummyFileURL, withIntermediateDirectories: true))
+        
+        XCTAssert(FileManager.default.fileExists(atPath: dummyFileURL.path))
+        
+        // Create real folder
+        
+        let folder = createFolder(account: account, password: password)
+        let realFile = uploadData(to: folder, account: account, password: password)
+        downloadData(path: realFile.fileName, account: account, password: password)
+        let realFileURL = webDAV.cachedDataURL(forItemAtPath: realFile.fileName, account: account)!
+        
+        XCTAssert(FileManager.default.fileExists(atPath: realFileURL.path))
         
         // List files
         
@@ -496,8 +503,11 @@ final class WebDAVTests: XCTestCase {
         wait(for: [expectation], timeout: 10.0)
         
         // Check that the fake cached folder was cleaned up
+        XCTAssertFalse(FileManager.default.fileExists(atPath: dummyFileURL.path))
+        // Check that the real file still exists
+        XCTAssert(FileManager.default.fileExists(atPath: realFileURL.path))
         
-        XCTAssertFalse(FileManager.default.fileExists(atPath: tempFileURL.path))
+        deleteFile(path: folder, account: account, password: password)
     }
     
     func testCleanupDiskCacheWithGoodFile() {
@@ -800,6 +810,21 @@ final class WebDAVTests: XCTestCase {
         return folder
     }
     
+    private func downloadData(path file: String, account: SimpleAccount, password: String) {
+        let expectation = XCTestExpectation(description: "Download file from WebDAV")
+        
+        try? webDAV.deleteCachedData(forItemAtPath: file, account: account)
+        
+        webDAV.download(fileAtPath: file, account: account, password: password) { image, error in
+            XCTAssertNil(error)
+            XCTAssertNotNil(image)
+            
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+    }
+    
     private func downloadImage(imagePath: String, account: SimpleAccount, password: String) {
         let expectation = XCTestExpectation(description: "Download image from WebDAV")
         
@@ -853,7 +878,7 @@ final class WebDAVTests: XCTestCase {
         ("testCleanupFilesCacheRoot", testCleanupFilesCacheRoot),
         ("testCleanupFilesCacheSubdirectory", testCleanupFilesCacheSubdirectory),
         // Disk Cache Cleanup
-        ("testCleanupDiskCacheFile", testCleanupDiskCacheFile),
+        ("testCleanupDiskCacheFileRoot", testCleanupDiskCacheFileRoot),
         ("testCleanupDiskCacheFolder", testCleanupDiskCacheFolder),
         ("testCleanupDiskCacheWithGoodFile", testCleanupDiskCacheWithGoodFile),
         // Image Cache
