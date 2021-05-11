@@ -494,7 +494,7 @@ final class WebDAVTests: XCTestCase {
         
         // List files
         
-        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
+        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false, caching: .doNotReturnCachedResult) { files, error in
             XCTAssertNotNil(files)
             XCTAssertNil(error)
             expectation.fulfill()
@@ -537,7 +537,7 @@ final class WebDAVTests: XCTestCase {
         
         // List files
         
-        webDAV.listFiles(atPath: directory.path, account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
+        webDAV.listFiles(atPath: directory.path, account: account, password: password, caching: .doNotReturnCachedResult) { files, error in
             XCTAssertNotNil(files)
             XCTAssertNil(error)
             expectation.fulfill()
@@ -550,6 +550,34 @@ final class WebDAVTests: XCTestCase {
         XCTAssert(FileManager.default.fileExists(atPath: cachedImageURL.path))
         XCTAssertFalse(FileManager.default.fileExists(atPath: tempFileURL.path))
         XCTAssertNoThrow(try webDAV.deleteCachedData(forItemAtPath: imagePath, account: account))
+    }
+    
+    func testCleanupDiskCacheKeepingThumbnail() {
+        guard let (account, password) = getAccount() else { return XCTFail() }
+        guard let imagePath = ProcessInfo.processInfo.environment["image_path"] else {
+            return XCTFail("You need to set the image_path in the environment.")
+        }
+        
+        let expectation = XCTestExpectation(description: "List files from WebDAV")
+        
+        // Download Thumbnail
+        downloadThumbnail(imagePath: imagePath, account: account, password: password)
+        let cachedThumbnailURL = webDAV.cachedThumbnailURL(forItemAtPath: imagePath, account: account, with: .default)!
+        XCTAssert(FileManager.default.fileExists(atPath: cachedThumbnailURL.path))
+        
+        // List files
+        
+        let imageURL = URL(fileURLWithPath: imagePath, isDirectory: false)
+        let directory = imageURL.deletingLastPathComponent()
+        
+        webDAV.listFiles(atPath: directory.path, account: account, password: password, caching: .doNotReturnCachedResult) { _, _ in
+            expectation.fulfill()
+        }
+        
+        wait(for: [expectation], timeout: 10.0)
+        
+        // Check that the cached thumbnail still exists
+        XCTAssert(FileManager.default.fileExists(atPath: cachedThumbnailURL.path))
     }
     
     //MARK: Images

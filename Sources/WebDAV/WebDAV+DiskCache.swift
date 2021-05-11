@@ -188,11 +188,11 @@ extension WebDAV {
         guard let url = cachedDataURL(forItemAtPath: path, account: account),
               fm.fileExists(atPath: url.path) else { return }
         
-        let goodFilePaths = Set(files.compactMap { cachedDataURL(forItemAtPath: $0.path, account: account)?.path })
+        let goodFilePaths = files.compactMap { cachedDataURL(forItemAtPath: $0.path, account: account)?.path }
         
         let infoPlist = filesCacheURL?.path
         for path in try fm.contentsOfDirectory(atPath: url.path).map({ url.appendingPathComponent($0).path })
-        where !goodFilePaths.contains(path)
+        where !goodFilePaths.contains(where: { path.starts(with: $0) })
             && path != infoPlist {
             try fm.removeItem(atPath: path)
         }
