@@ -356,29 +356,46 @@ final class WebDAVTests: XCTestCase {
     func testCleanupFilesCacheRoot() {
         guard let (account, password) = getAccount() else { return XCTFail() }
         
+        let listRealDirExpectation = XCTestExpectation(description: "List files from real directory.")
         let expectation = XCTestExpectation(description: "List files from WebDAV")
         
-        let path = UUID().uuidString
-        let accountPath = AccountPath(account: account, path: path)
+        let realDir = createFolder(account: account, password: password)
+        let realDirAccountPath = AccountPath(account: account, path: realDir)
+        
+        let fakeDir = UUID().uuidString
+        let fakeDirAccountPath = AccountPath(account: account, path: fakeDir)
+        
+        // Load real file into cache
+        uploadData(to: realDir, account: account, password: password)
+        webDAV.listFiles(atPath: realDir, account: account, password: password, caching: .doNotReturnCachedResult) { _, _ in
+            listRealDirExpectation.fulfill()
+        }
+        
+        wait(for: [listRealDirExpectation], timeout: 10000.0)
+        
+        XCTAssertNotNil(webDAV.filesCache[realDirAccountPath])
         
         // Place fake cache
         
-        webDAV.filesCache[accountPath] = [WebDAVFile(path: path + "/fake.txt", id: "0", isDirectory: true, lastModified: Date(), size: 0, etag: "0")]
-        XCTAssertNotNil(webDAV.filesCache[accountPath])
+        webDAV.filesCache[fakeDirAccountPath] = [WebDAVFile(path: fakeDir + "/fake.txt", id: "0", isDirectory: true, lastModified: Date(), size: 0, etag: "0")]
+        XCTAssertNotNil(webDAV.filesCache[fakeDirAccountPath])
         
         // List files
         
-        webDAV.listFiles(atPath: "/", account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
+        webDAV.listFiles(atPath: "/", account: account, password: password, caching: .doNotReturnCachedResult) { files, error in
             XCTAssertNotNil(files)
             XCTAssertNil(error)
             expectation.fulfill()
         }
         
-        wait(for: [expectation], timeout: 10.0)
+        wait(for: [expectation], timeout: 10000.0)
         
         // Check that the fake cached file was cleaned up
+        XCTAssertNil(webDAV.filesCache[fakeDirAccountPath])
+        // Check that the real file still exists
+        XCTAssertNotNil(webDAV.filesCache[realDirAccountPath])
         
-        XCTAssertNil(webDAV.filesCache[accountPath])
+        deleteFile(path: realDir, account: account, password: password)
     }
     
     func testCleanupFilesCacheSubdirectory() {
@@ -397,7 +414,7 @@ final class WebDAVTests: XCTestCase {
         
         // List files
         
-        webDAV.listFiles(atPath: folder, account: account, password: password, foldersFirst: false, caching: .ignoreCache) { files, error in
+        webDAV.listFiles(atPath: folder, account: account, password: password, foldersFirst: false, caching: .doNotReturnCachedResult) { files, error in
             XCTAssertNotNil(files)
             XCTAssertNil(error)
             expectation.fulfill()
@@ -719,11 +736,17 @@ final class WebDAVTests: XCTestCase {
         wait(for: [expectation], timeout: 10.0)
     }
     
-    private func uploadData(account: SimpleAccount, password: String) -> (name: String, fileName: String, content: String) {
+    @discardableResult
+    private func uploadData(to folder: String = "", account: SimpleAccount, password: String) -> (name: String, fileName: String, content: String) {
         let expectation = XCTestExpectation(description: "Upload data")
         
         let name = UUID().uuidString
-        let fileName = name + ".txt"
+        let fileName: String
+        if folder.isEmpty {
+            fileName = name + ".txt"
+        } else {
+            fileName = "\(folder)/\(name).txt"
+        }
         let content = UUID().uuidString
         let data = content.data(using: .utf8)!
         
