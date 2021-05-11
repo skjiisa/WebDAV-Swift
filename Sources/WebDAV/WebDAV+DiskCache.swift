@@ -23,9 +23,16 @@ public extension WebDAV {
     func cachedDataURL<A: WebDAVAccount>(forItemAtPath path: String, account: A) -> URL? {
         guard let encodedDescription = UnwrappedAccount(account: account)?.encodedDescription,
               let caches = cacheFolder else { return nil }
-        return caches
-            .appendingPathComponent(encodedDescription)
-            .appendingPathComponent(path.trimmingCharacters(in: AccountPath.slash))
+        let trimmedPath = path.trimmingCharacters(in: AccountPath.slash)
+        
+        if trimmedPath.isEmpty {
+            return caches
+                .appendingPathComponent(encodedDescription)
+        } else {
+            return caches
+                .appendingPathComponent(encodedDescription)
+                .appendingPathComponent(trimmedPath)
+        }
     }
     
     /// Get the local cached data URL for the item at the specified path if there is cached data there.
@@ -178,13 +185,14 @@ extension WebDAV {
     
     func cleanupDiskCache<A: WebDAVAccount>(at path: String, account: A, files: [WebDAVFile]) throws {
         let fm = FileManager.default
-        guard let url = cachedDataURL(forItemAtPath: path, account: account),fm.fileExists(atPath: url.path) else { return }
+        guard let url = cachedDataURL(forItemAtPath: path, account: account),
+              fm.fileExists(atPath: url.path) else { return }
         
-        let goodFilePaths = Set(files.compactMap { cachedDataURL(forItemAtPath: $0.path, account: account)?.path })
+        let goodFilePaths = files.compactMap { cachedDataURL(forItemAtPath: $0.path, account: account)?.path }
         
         let infoPlist = filesCacheURL?.path
         for path in try fm.contentsOfDirectory(atPath: url.path).map({ url.appendingPathComponent($0).path })
-        where !goodFilePaths.contains(path)
+        where !goodFilePaths.contains(where: { path.starts(with: $0) })
             && path != infoPlist {
             try fm.removeItem(atPath: path)
         }

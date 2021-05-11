@@ -541,7 +541,7 @@ extension WebDAV {
         for (key, _) in filesCache
         where key.path != directory
             && key.path.starts(with: directory)
-            && !files.contains(where: { key.path.starts(with: $0.path) }) {
+            && !files.contains(where: { key.path.starts(with: $0.path.trimmingCharacters(in: AccountPath.slash)) }) {
             filesCache.removeValue(forKey: key)
             changed = true
         }
