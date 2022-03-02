@@ -2,6 +2,13 @@
 
 WebDAV communication library for Swift
 
+**Note**: This has only been tested on **Nextcloud** servers.
+Submit an [issue](https://github.com/Isvvc/WebDAV-Swift/issues) if you have compatibility issues with other WebDAV servers.
+Help in adding support for additional services would be greatly appreciated!
+See [Contribution](#contribution).
+
+* [\[#43\]](https://github.com/Isvvc/WebDAV-Swift/issues/43) Apache WebDAV has been reported to not work
+
 ## Table of contents
 
 + [Install](#install)
